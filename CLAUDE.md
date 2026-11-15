@@ -45,30 +45,24 @@ Git identity is set locally (noreply address). Commit after each green stage.
 - Tests run against real Postgres; schema is created by Alembic migrations.
 
 ## Progress
-- [x] Stage 0: scaffold (uv, ruff, mypy, pytest, alembic)
-- [x] Stage 1: DB models + migration, message format, queue, pipeline, e2e tests
-- [x] Stage 2: AI providers, RAG, guard, mock rules
-- [x] Stage 3: channels (telegram, email, webform) - code done, unit tests pending
-- [x] Stage 4: actions (sheets/csv, invoices, notifications)
-- [x] Stage 5: price monitoring + morning report - code done, tests pending
-- [ ] Stage 6: web panel
-- [ ] Stage 7: evals, coverage >= 85%, CI
-- [ ] Stage 8: demo mode (`make demo`), screenshots
-- [ ] Stage 9: docs (README x3, ARCHITECTURE, CASE_STUDY, EXPLAIN_RU)
-- [ ] Stage 10: publish to GitHub, verify CI
+- [x] Stages 0-9: core pipeline, AI providers, channels, actions, pricing, reports, web panel,
+      evals (112 messages), 219 tests / 94% coverage, Docker demo stack, CI workflow,
+      screenshots + tour GIF, docs (README x3, ARCHITECTURE, CASE_STUDY, EXPLAIN_RU), MIT.
+- [ ] Stage 10: published to GitHub; watch CI (the `docker` job is the only place where
+      `docker compose` itself is exercised - it is not installed locally).
+
+## Useful facts
+- Evals: `make evals` (mock). Real LLM rows for the README table still need a key:
+  `GEMINI_API_KEY=... make evals PROVIDER=gemini`, then paste the `--markdown` row.
+- Demo without compose (how it was verified locally): build the image, create a docker
+  network, run postgres/redis/mailpit/competitor, then the image with an --env-file as
+  migrate / web / worker / scheduler. Note: in zsh use `${=VAR}` to word-split.
+- `pkill -f "arq ai_operator"` kills its own shell; use `pkill -f "bin/[a]rq"`.
+- Screenshots: `make demo` then `make screenshots` (Playwright chromium in ~/.cache).
+- The dashboard's "median response time" in the demo comes from seeded history
+  (timestamps are simulated); do not quote it as a measurement.
 
 ## Open questions for the user
-- docker compose plugin (see above).
-- Gemini API key - needed only to fill the "real LLM" column of the evals table.
-
-## Where the last session stopped (2026-11-15, usage limit)
-- Done since the progress list above: Stage 6 web panel (30 tests green), `demo.py`
-  (seed + traffic), `scripts/screenshots.py`. Dashboard checked visually, looks right.
-- Left: Stage 7 (evals ~100 messages, unit tests to >= 85% coverage, CI), rest of Stage 8
-  (Dockerfile, compose with mailpit + `demo/competitor_site`, Makefile, `.env.example`,
-  final screenshots), Stage 9 docs + MIT LICENSE, Stage 10 publish.
-- Small fix pending: dashboard tiles leave the 6th tile alone on a second row.
-- Local run: start `abo-test-pg`/`abo-test-redis`, export DATABASE_URL (:55432), REDIS_URL
-  (:56379), AI_PROVIDER=mock, DEMO_MODE=true, ADMIN_PASSWORD=demo, then
-  `python -m ai_operator.demo seed`, uvicorn `ai_operator.web.app:app_factory --factory`,
-  and `arq ai_operator.queue.worker.WorkerSettings`.
+- docker compose plugin is not installed locally (install was denied by the permission system).
+- Gemini API key for the real-LLM row of the evals table.
+- Armenian texts should be proofread by a native speaker.
