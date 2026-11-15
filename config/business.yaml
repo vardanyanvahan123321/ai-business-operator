@@ -55,7 +55,7 @@ services:
     duration_minutes: 45
   - code: wheel_alignment
     name: { en: Wheel alignment, ru: Развал-схождение, hy: Անիվների հավասարեցում }
-    keywords: [alignment, развал, схожден, հավասարեցում, ռազվալ]
+    keywords: [alignment, развал, схожден, հավասարեց, ռազվալ]
     price: 14000
     duration_minutes: 60
   - code: ac_recharge

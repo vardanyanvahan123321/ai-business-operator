@@ -76,9 +76,8 @@ async def main() -> None:  # pragma: no cover - process entry point
         loop.add_signal_handler(sig, stop.set)
 
     polling: asyncio.Task[None] | None = None
-    if "telegram" in ctx.channels:
-        channel = ctx.channels.get("telegram")
-        assert isinstance(channel, TelegramChannel)
+    channel = ctx.channels.get("telegram") if "telegram" in ctx.channels else None
+    if isinstance(channel, TelegramChannel):  # not the simulated demo channel
         polling = asyncio.create_task(run_polling(ctx, channel))
 
     await stop.wait()

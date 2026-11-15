@@ -139,9 +139,8 @@ async def telegram_webhook(request: Request, secret: str) -> dict[str, bool]:
     expected = ctx.settings.telegram_webhook_secret
     if not expected or not secrets.compare_digest(secret, expected):
         raise HTTPException(status_code=404)
-    if "telegram" not in ctx.channels:
+    channel = ctx.channels.get("telegram") if "telegram" in ctx.channels else None
+    if not isinstance(channel, TelegramChannel):
         raise HTTPException(status_code=503, detail="telegram channel is not configured")
-    channel = ctx.channels.get("telegram")
-    assert isinstance(channel, TelegramChannel)
     await handle_update(ctx, channel, await request.json())
     return {"ok": True}

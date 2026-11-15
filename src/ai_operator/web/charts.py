@@ -49,7 +49,7 @@ def compact(value: float) -> str:
     return f"{value:g}"
 
 
-def _frame(top: float, inner_height: float) -> list[str]:
+def _frame(top: float, inner_height: float, bottom: float = 0.0) -> list[str]:
     """Recessive horizontal grid lines with value labels."""
     parts = []
     for fraction in (0.0, 0.5, 1.0):
@@ -58,7 +58,7 @@ def _frame(top: float, inner_height: float) -> list[str]:
             f'<line class="grid" x1="{PAD_LEFT}" x2="{WIDTH - PAD_RIGHT}" '
             f'y1="{y:.1f}" y2="{y:.1f}"/>'
             f'<text class="axis" x="{PAD_LEFT - 6}" y="{y + 4:.1f}" text-anchor="end">'
-            f"{compact(top * fraction)}</text>"
+            f"{compact(bottom + (top - bottom) * fraction)}</text>"
         )
     return parts
 
@@ -102,15 +102,23 @@ def stacked_bars(labels: Sequence[str], series: Sequence[Series], title: str) ->
 
 
 def line_chart(labels: Sequence[str], series: Sequence[Series], title: str) -> str:
-    """Lines for change over time; the last point of each series is labelled directly."""
-    inner_w = WIDTH - PAD_LEFT - PAD_RIGHT - 70  # room for end labels
+    """Lines for change over time; the last point of each series is labelled directly.
+
+    Unlike bars, lines do not need a zero baseline: the axis is zoomed to the
+    data range, otherwise prices that differ by a few percent would overlap.
+    """
+    inner_w = WIDTH - PAD_LEFT - PAD_RIGHT - 96  # room for end labels
     inner_h = HEIGHT - PAD_TOP - PAD_BOTTOM
-    top = nice_max(max((v for s in series for v in s.values), default=0))
+    values = [v for s in series for v in s.values]
+    low, high = min(values, default=0.0), max(values, default=1.0)
+    margin = (high - low) * 0.35 or max(high * 0.1, 1.0)
+    bottom, top = max(0.0, low - margin), high + margin
     step = inner_w / max(len(labels) - 1, 1)
-    parts = _frame(top, inner_h)
+    parts = _frame(top, inner_h, bottom)
+    ends: list[tuple[float, float, str]] = []
     for s in series:
         points = [
-            (PAD_LEFT + step * i, PAD_TOP + inner_h * (1 - value / top))
+            (PAD_LEFT + step * i, PAD_TOP + inner_h * (1 - (value - bottom) / (top - bottom)))
             for i, value in enumerate(s.values)
         ]
         if not points:
@@ -123,10 +131,14 @@ def line_chart(labels: Sequence[str], series: Sequence[Series], title: str) -> s
                 f'fill="var(--series-{s.slot})">'
                 f"<title>{escape(label)} - {escape(s.label)}: {value:g}</title></circle>"
             )
-        end_x, end_y = points[-1]
+        ends.append((points[-1][1], points[-1][0], s.label))
+    # Keep end labels at least one line apart so they never overlap.
+    previous = -100.0
+    for y, x, label in sorted(ends):
+        y = max(y, previous + 14)
+        previous = y
         parts.append(
-            f'<text class="end-label" x="{end_x + 8:.1f}" y="{end_y + 4:.1f}">'
-            f"{escape(s.label)}</text>"
+            f'<text class="end-label" x="{x + 10:.1f}" y="{y + 4:.1f}">{escape(label)}</text>'
         )
     every = max(1, len(labels) // 7)
     parts.extend(

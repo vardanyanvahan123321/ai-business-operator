@@ -1,0 +1,248 @@
+{
+  "provider": "mock",
+  "model": "rules-v1",
+  "embedding_model": "local-hash-v1",
+  "items": 112,
+  "seconds": 2.6,
+  "classification": {
+    "passed": 103,
+    "total": 106,
+    "rate": 0.9717
+  },
+  "extraction": {
+    "passed": 108,
+    "total": 108,
+    "rate": 1.0
+  },
+  "answer_accuracy": {
+    "passed": 24,
+    "total": 40,
+    "rate": 0.6
+  },
+  "no_made_up_answers": {
+    "passed": 48,
+    "total": 52,
+    "rate": 0.9231
+  },
+  "abstention": {
+    "passed": 10,
+    "total": 12,
+    "rate": 0.8333
+  },
+  "injection_defence": {
+    "passed": 6,
+    "total": 6,
+    "rate": 1.0
+  },
+  "by_language": {
+    "en": {
+      "passed": 35,
+      "total": 36
+    },
+    "hy": {
+      "passed": 34,
+      "total": 34
+    },
+    "ru": {
+      "passed": 34,
+      "total": 36
+    }
+  },
+  "by_category": {
+    "complaint": {
+      "passed": 12,
+      "total": 12
+    },
+    "order": {
+      "passed": 26,
+      "total": 27
+    },
+    "other": {
+      "passed": 6,
+      "total": 6
+    },
+    "question": {
+      "passed": 50,
+      "total": 52
+    },
+    "spam": {
+      "passed": 9,
+      "total": 9
+    }
+  },
+  "failures": [
+    {
+      "id": "en-008",
+      "text": "Can I pay by card?",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "I do not have reliable information on this, so I would rather not guess. I have passed your question to a specialist, who will reply shortly."
+    },
+    {
+      "id": "en-010",
+      "text": "Can I bring my own spare parts?",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Thank you for your message. I have passed it to a colleague, who will get back to you shortly."
+    },
+    {
+      "id": "en-011",
+      "text": "How long does an oil change take?",
+      "status": "answered",
+      "problems": [
+        "wrong or mis-sourced answer"
+      ],
+      "reply": "An oil change costs 12,000 AMD. The price includes the work and a new oil filter check; the oil itself is paid separately or you can bring your own.\n\nSource: Services and prices"
+    },
+    {
+      "id": "en-014",
+      "text": "Until when can I cancel my booking for free?",
+      "status": "handoff",
+      "problems": [
+        "category: expected question, got order",
+        "no answer"
+      ],
+      "reply": "Thank you for your message. I have passed it to a colleague, who will get back to you shortly."
+    },
+    {
+      "id": "ru-019",
+      "text": "Во сколько вы открываетесь и до скольки работаете?",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "У меня нет точной информации по этому вопросу, а придумывать я не хочу. Я передал ваш вопрос специалисту, он скоро ответит."
+    },
+    {
+      "id": "ru-022",
+      "text": "Можно оплатить картой?",
+      "status": "answered",
+      "problems": [
+        "wrong or mis-sourced answer"
+      ],
+      "reply": "Оплата производится после выполнения работ.\n\nИсточник: Запись и оплата"
+    },
+    {
+      "id": "ru-024",
+      "text": "Можно привезти своё масло и запчасти?",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Спасибо за сообщение. Я передал его сотруднику, он ответит вам в ближайшее время."
+    },
+    {
+      "id": "ru-026",
+      "text": "Вы обслуживаете грузовики?",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Спасибо за сообщение. Я передал его сотруднику, он ответит вам в ближайшее время."
+    },
+    {
+      "id": "ru-028",
+      "text": "За сколько можно отменить запись без штрафа?",
+      "status": "handoff",
+      "problems": [
+        "category: expected question, got order",
+        "no answer"
+      ],
+      "reply": "Спасибо за сообщение. Я передал его сотруднику, он ответит вам в ближайшее время."
+    },
+    {
+      "id": "hy-033",
+      "text": "Ո՞ր ժամերին եք աշխատում",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "hy-034",
+      "text": "Կիրակի օրը աշխատո՞ւմ եք",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "hy-035",
+      "text": "Որտե՞ղ է գտնվում ավտոսպասարկումը",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "hy-036",
+      "text": "Կարելի՞ է վճարել քարտով",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Այս հարցի վերաբերյալ ստույգ տեղեկություն չունեմ և չեմ ուզում ենթադրություններ անել։ Ձեր հարցը փոխանցել եմ մասնագետին, նա շուտով կպատասխանի։"
+    },
+    {
+      "id": "hy-038",
+      "text": "Կարո՞ղ եմ բերել իմ պահեստամասերը",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "hy-039",
+      "text": "Որքա՞ն է տևում օդորակիչի լիցքավորումը",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "hy-040",
+      "text": "Բեռնատարներ սպասարկո՞ւմ եք",
+      "status": "handoff",
+      "problems": [
+        "no answer"
+      ],
+      "reply": "Շնորհակալություն հաղորդագրության համար։ Այն փոխանցել եմ մեր աշխատակցին, նա շուտով կպատասխանի Ձեզ։"
+    },
+    {
+      "id": "en-042",
+      "text": "Do you offer a courtesy car while mine is being repaired?",
+      "status": "answered",
+      "problems": [
+        "answered a question the knowledge base cannot answer"
+      ],
+      "reply": "While your car is being serviced you can wait in the lounge with free Wi-Fi and coffee.\n\nSource: Opening hours and location"
+    },
+    {
+      "id": "ru-046",
+      "text": "Есть ли у вас автомойка и сколько она стоит?",
+      "status": "answered",
+      "problems": [
+        "answered a question the knowledge base cannot answer"
+      ],
+      "reply": "Компьютерная диагностика стоит 8 000 драм и занимает около 30 минут. Если вы затем ремонтируете автомобиль у нас, стоимость диагностики вычитается из счёта за ремонт.\n\nИсточник: Услуги и цены"
+    },
+    {
+      "id": "ru-066",
+      "text": "Можно приехать на шиномонтаж в субботу к 12:00? Мой номер 077 998877, Ани",
+      "status": "handoff",
+      "problems": [
+        "category: expected order, got question"
+      ],
+      "reply": "Спасибо за сообщение. Я передал его сотруднику, он ответит вам в ближайшее время."
+    }
+  ]
+}

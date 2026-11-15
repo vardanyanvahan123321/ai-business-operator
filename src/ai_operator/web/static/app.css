@@ -154,7 +154,9 @@ main { padding: 22px 28px 48px; min-width: 0; }
 .card.attention { border-left: 3px solid var(--series-2); }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .grid-2.wide-left { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 1500px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tile {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -275,6 +277,7 @@ form.inline select { width: auto; padding: 3px 6px; font-size: 12.5px; }
   overflow-wrap: anywhere;
 }
 .bubble small { display: block; margin-bottom: 2px; font-size: 11.5px; }
+.bubble small.attach { margin: 6px 0 0; }
 .bubble.in { background: var(--neutral-soft); border-bottom-left-radius: 4px; }
 .bubble.out { background: var(--accent-soft); border-bottom-right-radius: 4px; margin-left: auto; }
 .bubble .button { margin-top: 8px; }
@@ -300,7 +303,8 @@ pre.report { margin: 0; white-space: pre-wrap; font: inherit; color: var(--text-
 svg.chart { width: 100%; height: auto; display: block; }
 svg.chart .grid { stroke: var(--border); stroke-width: 1; }
 svg.chart .axis, svg.chart .row-label, svg.chart .value, svg.chart .end-label { fill: var(--muted); font-size: 11px; font-family: var(--font); }
-svg.chart .row-label, svg.chart .end-label { fill: var(--text-2); font-size: 12px; }
+svg.chart .row-label { fill: var(--text-2); font-size: 12px; }
+svg.chart .end-label { fill: var(--text-2); font-size: 11px; }
 svg.chart .value { fill: var(--text); font-size: 12px; font-variant-numeric: tabular-nums; }
 svg.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 svg.chart .dot { stroke: var(--surface); stroke-width: 2; }

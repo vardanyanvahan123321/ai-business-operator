@@ -1,0 +1,119 @@
+# One command, no keys:   make demo   (or: docker compose up --build -d --wait)
+#
+# Every value below has a demo default, so the stack starts without a .env file.
+# For real use, copy .env.example to .env and override what you need.
+
+x-app: &app
+  build: .
+  image: ai-business-operator:local
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    DEMO_MODE: ${DEMO_MODE:-true}
+    AI_PROVIDER: ${AI_PROVIDER:-mock}
+    DATABASE_URL: postgresql+asyncpg://operator:operator@postgres:5432/operator
+    REDIS_URL: redis://redis:6379/0
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:-demo}
+    SESSION_SECRET: ${SESSION_SECRET:-demo-only-secret-change-me-in-production}
+    PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8088}
+    EMAIL_INBOX: ${EMAIL_INBOX:-mailpit}
+    EMAIL_ADDRESS: ${EMAIL_ADDRESS:-service@demo-auto.example}
+    SMTP_HOST: ${SMTP_HOST:-mailpit}
+    SMTP_PORT: ${SMTP_PORT:-1025}
+    SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+    MAILPIT_API_URL: http://mailpit:8025
+    COMPETITOR_BASE_URL: ${COMPETITOR_BASE_URL:-http://competitor:8090}
+    DATA_DIR: /app/var
+  volumes:
+    - appdata:/app/var
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: operator
+      POSTGRES_PASSWORD: operator
+      POSTGRES_DB: operator
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U operator -d operator"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Local mail catcher: an SMTP server plus a web inbox. No email leaves your machine.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  # A fictional competitor's website for the price-monitoring demo.
+  competitor:
+    <<: *app
+    command: ["python", "demo/competitor_site/app.py"]
+    environment:
+      PORT: "8090"
+    volumes: []
+    depends_on: {}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 10
+    ports:
+      - "127.0.0.1:8090:8090"
+
+  # One-shot: apply migrations, then load the knowledge base and demo history.
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["sh", "-c", "alembic upgrade head && python -m ai_operator.demo seed"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:8088:8088"
+
+  worker:
+    <<: *app
+    command: ["arq", "ai_operator.queue.worker.WorkerSettings"]
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    command: ["python", "-m", "ai_operator.scheduler"]
+    healthcheck:
+      disable: true
+
+volumes:
+  pgdata:
+  redisdata:
+  appdata:

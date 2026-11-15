@@ -16,9 +16,7 @@
       <div class="bubble in">{{ message.text }}</div>
       {% for reply in message.outbound %}
       <div class="bubble out">
-        <small class="muted">{{ t("ui.reply." ~ reply.kind) }} · {{ t("ui.delivery." ~ reply.status) }}{% if reply.sent_at %} · {{ fmt_ts(reply.sent_at) }}{% endif %}</small>
-        {{ reply.text }}
-        {% if reply.attachments %}<small class="muted">📎 {{ t("invoice.title") }}</small>{% endif %}
+        <small class="muted">{{ t("ui.reply." ~ reply.kind) }} · {{ t("ui.delivery." ~ reply.status) }}{% if reply.sent_at %} · {{ fmt_ts(reply.sent_at) }}{% endif %}</small>{{ reply.text }}{% if reply.attachments %}<small class="muted attach">📎 {{ t("invoice.title") }}</small>{% endif %}
       </div>
       {% endfor %}
       {% if message.error %}<p class="alert">{{ message.error }}</p>{% endif %}

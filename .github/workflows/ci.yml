@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+
+  test:
+    name: Tests, coverage and evals
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: operator
+          POSTGRES_PASSWORD: operator
+          POSTGRES_DB: operator
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U operator" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["56379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries for PDF rendering
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu-core
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Tests (fails under 85% coverage)
+        run: uv run pytest --cov --cov-report=term-missing:skip-covered
+      - name: AI evals on the offline baseline
+        env:
+          DATABASE_URL: postgresql+asyncpg://operator:operator@localhost:55432/operator
+        run: uv run python -m evals.run --provider mock --min-classification 0.93 --min-no-made-up 0.90
+
+  docker:
+    name: Docker build and demo smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the demo exactly as a user would
+        run: docker compose up --build -d --wait --wait-timeout 300
+      - name: Health check
+        run: curl --fail --silent --show-error http://localhost:8088/health | tee /dev/stderr | grep -q '"status":"ok"'
+      - name: A customer message goes through the whole pipeline
+        run: |
+          location=$(curl --silent --output /dev/null --write-out '%{redirect_url}' \
+            --data-urlencode 'name=CI' --data-urlencode 'contact=+374 91 000111' \
+            --data-urlencode 'text=How much is an oil change?' http://localhost:8088/request)
+          echo "conversation: $location"
+          for attempt in $(seq 1 30); do
+            if curl --silent "$location/thread" | grep -q '12,000 AMD'; then
+              echo "answered from the knowledge base after ${attempt}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "no reply within 30s"; exit 1
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Stop
+        if: always()
+        run: docker compose down -v

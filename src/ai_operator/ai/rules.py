@@ -88,7 +88,10 @@ def classify(
         Category.QUESTION: min(2.5, 1.0 * _hits(low, QUESTION))
         + (1.5 if "?" in low or "՞" in low else 0.0),
     }
-    if has_booking_data:
+    is_question = "?" in low or "՞" in low
+    if has_booking_data and (scores[Category.ORDER] > 0 or not is_question):
+        # A date or phone hints at a booking - unless it is part of a plain
+        # question ("Are you open on Sunday?").
         scores[Category.ORDER] += 1.5
     if has_pending_booking and has_booking_data:
         # The customer is answering our "please send your phone" request.
@@ -190,7 +193,7 @@ _TODAY = ("today", "сегодня", "այսօր")
 
 _CLOCK = re.compile(r"(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?!\d)")
 _HOUR_WORD = re.compile(
-    r"(?:\bat|\bв|\bк|ժամը)\s*(\d{1,2})(?!\s*[.:/]\d)\s*(am|pm|утра|дня|вечера|часов|часа|час)?"
+    r"(?:\bat|\bв|\bк|\bна|ժամը)\s*(\d{1,2})(?!\s*[.:/]\d)\s*(am|pm|утра|дня|вечера|часов|часа|час)?"
     r"|(\d{1,2})\s*(am|pm)\b|(\d{1,2})-ին",
     re.IGNORECASE,
 )
