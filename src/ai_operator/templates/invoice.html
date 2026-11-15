@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "DejaVu Sans", "Noto Sans Armenian", sans-serif; font-size: 10.5pt; color: #1c2430; }
+  h1 { font-size: 22pt; margin: 0; letter-spacing: 0.5pt; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start;
+          border-bottom: 2pt solid #1f4e79; padding-bottom: 10pt; }
+  .brand { font-size: 13pt; font-weight: bold; color: #1f4e79; }
+  .meta { text-align: right; color: #4a5565; }
+  .meta strong { color: #1c2430; }
+  .parties { display: flex; gap: 24pt; margin: 18pt 0; }
+  .party { flex: 1; }
+  .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 1pt; color: #6b7686; margin-bottom: 4pt; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6pt; }
+  th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.6pt;
+       color: #6b7686; border-bottom: 1pt solid #c9d1dc; padding: 6pt 4pt; }
+  td { padding: 9pt 4pt; border-bottom: 0.5pt solid #e3e8ef; }
+  .num { text-align: right; white-space: nowrap; }
+  .total td { border-bottom: none; font-size: 13pt; font-weight: bold; padding-top: 12pt; }
+  .note { margin-top: 16pt; color: #4a5565; font-size: 9pt; }
+  .footer { margin-top: 28pt; padding-top: 10pt; border-top: 0.5pt solid #c9d1dc; color: #6b7686; font-size: 9pt; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <div class="brand">{{ company }}</div>
+      <div>{{ seller.address.get(lang) }}</div>
+      <div>{{ seller.phone }} · {{ seller.email }}</div>
+    </div>
+    <div class="meta">
+      <h1>{{ t("invoice.title") }}</h1>
+      <div>{{ t("invoice.number") }} <strong>{{ number }}</strong></div>
+      <div>{{ t("invoice.date") }}: <strong>{{ issued }}</strong></div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <div class="label">{{ t("invoice.seller") }}</div>
+      <div><strong>{{ seller.legal_name }}</strong></div>
+      {% if seller.tax_id %}<div>{{ t("invoice.tax_id") }}: {{ seller.tax_id }}</div>{% endif %}
+    </div>
+    <div class="party">
+      <div class="label">{{ t("invoice.buyer") }}</div>
+      <div><strong>{{ customer_name }}</strong></div>
+      {% if customer_phone %}<div>{{ t("invoice.phone") }}: {{ customer_phone }}</div>{% endif %}
+      {% if appointment %}<div>{{ t("invoice.appointment") }}: {{ appointment }}</div>{% endif %}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ t("invoice.item") }}</th>
+        <th class="num">{{ t("invoice.qty") }}</th>
+        <th class="num">{{ t("invoice.unit_price") }}</th>
+        <th class="num">{{ t("invoice.total") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ service_name }}</td>
+        <td class="num">1</td>
+        <td class="num">{{ amount }} {{ currency }}</td>
+        <td class="num">{{ amount }} {{ currency }}</td>
+      </tr>
+      <tr class="total">
+        <td colspan="3" class="num">{{ t("invoice.total") }}</td>
+        <td class="num">{{ amount }} {{ currency }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if estimate %}<div class="note">{{ t("invoice.estimate_note") }}</div>{% endif %}
+  {% if seller.bank_details %}
+  <div class="note"><span class="label">{{ t("invoice.bank") }}</span><br>{{ seller.bank_details }}</div>
+  {% endif %}
+
+  <div class="footer">
+    {{ t("invoice.footer") }}
+    {% if demo %}<br>{{ t("invoice.demo_note") }}{% endif %}
+  </div>
+</body>
+</html>

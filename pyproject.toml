@@ -1,0 +1,97 @@
+[project]
+name = "ai-business-operator"
+version = "1.0.0"
+description = "AI operator that automates small-business routine: channels -> queue -> AI brain -> actions -> database -> reports"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Vahan Vardanyan" }]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.2",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "arq>=0.26",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pyyaml>=6.0",
+    "structlog>=24.1",
+    "httpx>=0.27",
+    "tenacity>=8.3",
+    "apscheduler>=3.10,<4",
+    "weasyprint>=62",
+    "gspread>=6.1",
+    "aiosmtplib>=3.0",
+    "beautifulsoup4>=4.12",
+    "google-genai>=1.0",
+    "anthropic>=0.40",
+    "openai>=1.40",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML",
+]
+screenshots = ["playwright>=1.45", "pillow>=10"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_operator"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "evals"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF", "ASYNC", "S", "PT"]
+ignore = ["RUF001", "RUF002", "RUF003", "S101", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311", "ASYNC230", "ASYNC240", "PT022", "E501"]
+"demo/**" = ["S"]
+"scripts/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "evals"]
+
+[[tool.mypy.overrides]]
+module = ["arq.*", "apscheduler.*", "weasyprint.*", "gspread.*", "pgvector.*", "asyncpg.*"]
+ignore_missing_imports = true
+follow_untyped_imports = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --strict-markers"
+
+[tool.coverage.run]
+source = ["ai_operator"]
+branch = true
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError", "if __name__ == .__main__.:"]

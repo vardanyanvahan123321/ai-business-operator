@@ -1,0 +1,109 @@
+# Everything that describes the business lives here.
+# Point the system at another company by editing this file - no code changes.
+# The demo company is fictional.
+
+name:
+  en: Demo Auto Service Yerevan
+  ru: Демо Автосервис Ереван
+  hy: Դեմո Ավտոսպասարկում Երևան
+description:
+  en: Car repair and maintenance workshop
+  ru: Автосервис - ремонт и обслуживание автомобилей
+  hy: Ավտոմեքենաների վերանորոգման և սպասարկման կենտրոն
+
+timezone: Asia/Yerevan
+currency: AMD
+default_language: en
+owner_language: ru
+
+working_hours:
+  en: Mon-Sat 09:00-19:00, Sunday closed
+  ru: Пн-Сб 09:00-19:00, воскресенье - выходной
+  hy: Երկ-Շբթ 09:00-19:00, կիրակի՝ փակ
+
+seller:
+  legal_name: Demo Auto Service LLC
+  tax_id: "00000000"
+  address:
+    en: 1 Demo Street, Yerevan, Armenia
+    ru: Армения, Ереван, ул. Демо, 1
+    hy: Հայաստան, Երևան, Դեմո փողոց 1
+  phone: "+374 10 000000"
+  email: service@demo-auto.example
+  bank_details: "Demo Bank, IBAN AM00 0000 0000 0000 0000"
+
+services:
+  - code: oil_change
+    name: { en: Oil change, ru: Замена масла, hy: Յուղի փոխում }
+    keywords: [oil, масл, յուղ]
+    price: 12000
+    duration_minutes: 40
+  - code: diagnostics
+    name: { en: Computer diagnostics, ru: Компьютерная диагностика, hy: Համակարգչային ախտորոշում }
+    keywords: [diagnos, диагност, ախտորոշ, դիագնոստիկ]
+    price: 8000
+    duration_minutes: 30
+  - code: brake_pads
+    name: { en: Brake pads replacement, ru: Замена тормозных колодок, hy: Արգելակային կոճղակների փոխում }
+    keywords: [brake, тормоз, колод, արգելակ, կոճղակ]
+    price: 15000
+    duration_minutes: 60
+  - code: tire_fitting
+    name: { en: Tire fitting, ru: Шиномонтаж, hy: Անվադողերի փոխում }
+    keywords: [tire, tyre, шиномонтаж, шин, резин, անվադող, դողեր]
+    price: 10000
+    duration_minutes: 45
+  - code: wheel_alignment
+    name: { en: Wheel alignment, ru: Развал-схождение, hy: Անիվների հավասարեցում }
+    keywords: [alignment, развал, схожден, հավասարեցում, ռազվալ]
+    price: 14000
+    duration_minutes: 60
+  - code: ac_recharge
+    name: { en: A/C recharge, ru: Заправка кондиционера, hy: Օդորակիչի լիցքավորում }
+    keywords: [a/c, air condition, conditioner, кондиционер, օդորակիչ, կոնդիցիոներ]
+    price: 18000
+    duration_minutes: 50
+  - code: engine_repair
+    name: { en: Engine repair, ru: Ремонт двигателя, hy: Շարժիչի վերանորոգում }
+    keywords: [engine, двигател, мотор, շարժիչ]
+    price: 60000
+    price_from: true
+    duration_minutes: 480
+
+# Competitor price monitoring. In the demo these point at a local test site
+# shipped in ./demo/competitor_site (never at a real business).
+competitors:
+  - name: AutoFix Center
+    url: ${COMPETITOR_BASE_URL:-http://localhost:8090}/autofix/prices
+    item_selector: "table.prices tr.item"
+    name_selector: "td.name"
+    price_selector: "td.price"
+    service_map:
+      Oil change: oil_change
+      Computer diagnostics: diagnostics
+      Brake pads replacement: brake_pads
+      Tire fitting: tire_fitting
+      Wheel alignment: wheel_alignment
+      A/C recharge: ac_recharge
+  - name: Garage Pro
+    url: ${COMPETITOR_BASE_URL:-http://localhost:8090}/garagepro/services
+    item_selector: "div.service-card"
+    name_selector: "h3"
+    price_selector: "span.amount"
+    service_map:
+      Engine oil replacement: oil_change
+      Full diagnostics: diagnostics
+      Brake pad change: brake_pads
+      Tyre fitting: tire_fitting
+      Wheel alignment: wheel_alignment
+
+scrape:
+  user_agent: "AIBusinessOperatorBot/1.0 (+price monitoring; respects robots.txt)"
+  min_delay_seconds: 2.0
+  timeout_seconds: 15
+  hour: 7
+  minute: 30
+
+morning_report:
+  hour: 8
+  minute: 0
