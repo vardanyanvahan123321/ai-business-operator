@@ -3,7 +3,7 @@
   "model": "rules-v1",
   "embedding_model": "local-hash-v1",
   "items": 112,
-  "seconds": 2.6,
+  "seconds": 2.5,
   "classification": {
     "passed": 103,
     "total": 106,
