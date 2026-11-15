@@ -9,6 +9,7 @@ from ai_operator.ai.providers import build_provider
 from ai_operator.ai.resilience import RedisCache
 from ai_operator.channels.base import ChannelRegistry
 from ai_operator.channels.email import EmailChannel, build_inbox
+from ai_operator.channels.simulated import SimulatedChannel
 from ai_operator.channels.telegram import TelegramChannel
 from ai_operator.channels.webform import WebFormChannel
 from ai_operator.config import Settings, get_settings, load_business_config
@@ -24,6 +25,8 @@ def build_channels(settings: Settings) -> ChannelRegistry:
     registry.register(WebFormChannel())
     if settings.telegram_enabled:
         registry.register(TelegramChannel(settings.telegram_bot_token))
+    elif settings.demo_mode:
+        registry.register(SimulatedChannel("telegram"))
     if settings.smtp_host:
         registry.register(EmailChannel(settings))
     return registry

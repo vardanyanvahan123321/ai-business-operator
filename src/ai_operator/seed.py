@@ -21,7 +21,7 @@ def document_title(content: str, fallback: str) -> str:
 
 def read_knowledge_files(directory: Path) -> list[tuple[str, str, str, str]]:
     """``(source, title, content, language)`` for every Markdown file in the directory."""
-    found = []
+    found: list[tuple[str, str, str, str]] = []
     for path in sorted(directory.glob("*/*.md")):
         language = path.parent.name
         if language in LANGS:

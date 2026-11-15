@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.handoffs") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.handoffs") }}{% endblock %}
+{% block actions %}
+<a class="button ghost" href="/panel/handoffs?show={{ 'open' if show == 'all' else 'all' }}">{{ t("ui.handoff.show_open") if show == "all" else t("ui.handoff.show_all") }}</a>
+{% endblock %}
+{% block content %}
+<p class="lead-text">{{ t("ui.handoff.intro") }}</p>
+{% for handoff in handoffs %}
+<div class="card {% if handoff.status == 'open' %}attention{% endif %}">
+  <div class="meta-row">
+    <span class="badge s-handoff">{{ t("reason." ~ handoff.reason) }}</span>
+    <span class="chip">{{ handoff.message.channel }}</span>
+    <strong>{{ handoff.message.sender_name or handoff.message.sender_id }}</strong>
+    <span class="muted">{{ fmt_ts(handoff.created_at) }}</span>
+    <a href="/panel/inbox/{{ handoff.message_id }}">#{{ handoff.message_id }}</a>
+  </div>
+  <div class="bubble in">{{ handoff.message.text }}</div>
+  {% if handoff.status == "open" %}
+  <form method="post" action="/panel/handoffs/{{ handoff.id }}/resolve" class="stack">
+    {{ m.csrf(csrf_token) }}
+    <textarea name="reply" rows="2" placeholder="{{ t('ui.handoff.placeholder') }}" aria-label="{{ t('ui.handoff.reply_label') }}"></textarea>
+    <div class="row"><button type="submit">{{ t("ui.handoff.send") }}</button><span class="muted">{{ t("ui.handoff.hint") }}</span></div>
+  </form>
+  {% else %}
+  {% if handoff.resolution %}<div class="bubble out">{{ handoff.resolution }}</div>{% endif %}
+  <p class="muted">{{ t("ui.handoff.resolved") }} · {{ fmt_ts(handoff.resolved_at) }}</p>
+  {% endif %}
+</div>
+{% else %}
+<p class="empty">{{ t("ui.empty.handoffs") }}</p>
+{% endfor %}
+{% endblock %}

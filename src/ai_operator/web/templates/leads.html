@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.leads") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.leads") }}{% endblock %}
+{% block actions %}<span class="muted">{{ t("ui.leads.sink") }}: <span class="chip">{{ sink }}</span></span>{% endblock %}
+{% block content %}
+<div class="tabs">
+  <a href="/panel/leads" {% if not status %}aria-current="page"{% endif %}>{{ t("ui.all") }}</a>
+  {% for value in statuses %}<a href="/panel/leads?status={{ value }}" {% if status == value %}aria-current="page"{% endif %}>{{ t("lead." ~ value) }}</a>{% endfor %}
+</div>
+<div class="card flush">
+<table class="data">
+  <thead><tr>
+    <th>#</th><th>{{ t("ui.col.created") }}</th><th>{{ t("ui.col.name") }}</th><th>{{ t("ui.col.phone") }}</th><th>{{ t("ui.col.service") }}</th>
+    <th>{{ t("ui.col.when") }}</th><th class="num">{{ t("ui.col.amount") }}</th><th>{{ t("ui.col.status") }}</th><th>{{ t("ui.col.sheet") }}</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for lead in leads %}
+    {% set service = business.service(lead.service_code) %}
+    <tr>
+      <td class="muted">{{ lead.id }}</td>
+      <td class="nowrap muted">{{ fmt_ts(lead.created_at) }}</td>
+      <td>{{ lead.name or "-" }}</td>
+      <td class="nowrap">{{ lead.phone or lead.email or "-" }}</td>
+      <td>{{ service.name.get(lang) if service else (lead.service_text or "-") }}</td>
+      <td class="nowrap">{{ fmt_dt(lead.scheduled_at) }}</td>
+      <td class="num nowrap">{% if lead.amount is not none %}{{ fmt_money(lead.amount) }} {{ lead.currency }}{% else %}-{% endif %}</td>
+      <td>{{ m.lead_badge(t, lead.status) }}</td>
+      <td>{% if lead.sheet_synced_at %}<span title="{{ fmt_ts(lead.sheet_synced_at) }}">✓</span>{% elif lead.sheet_error %}<span class="badge s-dead" title="{{ lead.sheet_error }}">!</span>{% else %}<span class="muted">…</span>{% endif %}</td>
+      <td class="nowrap">
+        {% if lead.invoice %}<a href="/panel/leads/{{ lead.id }}/invoice" title="{{ lead.invoice.number }}">PDF</a>{% endif %}
+        {% if lead.status != "incomplete" %}
+        <form class="inline" method="post" action="/panel/leads/{{ lead.id }}/status">
+          {{ m.csrf(csrf_token) }}
+          <select name="status" aria-label="{{ t('ui.col.status') }}" onchange="this.form.submit()">
+            {% for value in statuses if value != "incomplete" %}<option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ t("lead." ~ value) }}</option>{% endfor %}
+          </select>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="10" class="muted">{{ t("ui.empty.list") }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

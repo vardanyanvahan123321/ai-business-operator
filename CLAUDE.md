@@ -60,3 +60,15 @@ Git identity is set locally (noreply address). Commit after each green stage.
 ## Open questions for the user
 - docker compose plugin (see above).
 - Gemini API key - needed only to fill the "real LLM" column of the evals table.
+
+## Where the last session stopped (2026-11-15, usage limit)
+- Done since the progress list above: Stage 6 web panel (30 tests green), `demo.py`
+  (seed + traffic), `scripts/screenshots.py`. Dashboard checked visually, looks right.
+- Left: Stage 7 (evals ~100 messages, unit tests to >= 85% coverage, CI), rest of Stage 8
+  (Dockerfile, compose with mailpit + `demo/competitor_site`, Makefile, `.env.example`,
+  final screenshots), Stage 9 docs + MIT LICENSE, Stage 10 publish.
+- Small fix pending: dashboard tiles leave the 6th tile alone on a second row.
+- Local run: start `abo-test-pg`/`abo-test-redis`, export DATABASE_URL (:55432), REDIS_URL
+  (:56379), AI_PROVIDER=mock, DEMO_MODE=true, ADMIN_PASSWORD=demo, then
+  `python -m ai_operator.demo seed`, uvicorn `ai_operator.web.app:app_factory --factory`,
+  and `arq ai_operator.queue.worker.WorkerSettings`.

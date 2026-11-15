@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.prices") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.prices") }}{% endblock %}
+{% block actions %}<form class="inline" method="post" action="/panel/prices/run">{{ m.csrf(csrf_token) }}<button type="submit">{{ t("ui.prices.run") }}</button></form>{% endblock %}
+{% block content %}
+<p class="lead-text">{{ t("ui.prices.intro") }}</p>
+<div class="card flush">
+<table class="data">
+  <thead><tr><th>{{ t("ui.col.service") }}</th><th class="num">{{ t("ui.prices.ours") }}</th>{% for name in competitors %}<th class="num">{{ name }}</th>{% endfor %}<th></th></tr></thead>
+  <tbody>
+  {% for row in table %}
+    <tr>
+      <td><a href="/panel/prices?service={{ row.service.code }}">{{ row.service.name.get(lang) }}</a></td>
+      <td class="num"><strong>{{ fmt_money(row.ours) }}</strong></td>
+      {% for price in row.theirs %}<td class="num {% if price is not none and row.ours is not none and price < row.ours %}cheaper{% endif %}">{{ fmt_money(price) }}</td>{% endfor %}
+      <td>{% if row.undercut %}<span class="badge s-handoff">▼ {{ t("ui.prices.undercut") }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if not competitors %}<p class="empty">{{ t("ui.prices.empty") }}</p>{% endif %}
+{% if history_chart %}
+<div class="card">
+  <h2>{{ t("ui.prices.history") }}: {{ business.service(selected).name.get(lang) }}, {{ business.currency }}</h2>
+  {{ m.legend(history_series) }}
+  {{ history_chart|safe }}
+  {{ m.data_table(t, history_labels, history_series) }}
+</div>
+{% endif %}
+<div class="card">
+  <h2>{{ t("ui.prices.reports") }}</h2>
+  {% for report in reports %}
+  <div class="report-item"><small class="muted">{{ fmt_ts(report.created_at) }}</small><p>{{ report.summary }}</p></div>
+  {% else %}<p class="muted">{{ t("ui.empty.list") }}</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% set waiting = thread|selectattr("waiting")|list %}
+<div class="thread" {% if waiting %}hx-get="/request/{{ token }}/thread" hx-trigger="every 1500ms" hx-target="#thread" hx-swap="innerHTML"{% endif %}>
+  {% for item in thread %}
+  <div class="bubble in"><small class="muted">{{ t("webform.you") }}</small>{{ item.message.text }}</div>
+  {% for reply in item.replies %}
+  <div class="bubble out"><small class="muted">{{ t("webform.reply") }}</small>{{ reply.text }}
+    {% for attachment in reply.attachments if attachment.kind == "invoice" %}
+    <a class="button ghost" href="/request/{{ token }}/invoice/{{ attachment.invoice_id }}">{{ t("webform.download_invoice") }}</a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% if item.waiting %}<div class="bubble out pending" role="status"><span class="dots" aria-hidden="true"></span>{{ t("webform.waiting") }}</div>{% endif %}
+  {% endfor %}
+</div>

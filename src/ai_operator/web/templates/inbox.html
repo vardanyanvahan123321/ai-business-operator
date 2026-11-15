@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ t("ui.nav.inbox") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.inbox") }}{% endblock %}
+{% block content %}
+<form class="filters" method="get" action="/panel/inbox">
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="{{ t('ui.search') }}" aria-label="{{ t('ui.search') }}">
+  <select name="status" aria-label="{{ t('ui.col.status') }}">
+    <option value="">{{ t("ui.col.status") }}: {{ t("ui.all") }}</option>
+    {% for value in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ t("status." ~ value) }}</option>{% endfor %}
+  </select>
+  <select name="category" aria-label="{{ t('ui.col.category') }}">
+    <option value="">{{ t("ui.col.category") }}: {{ t("ui.all") }}</option>
+    {% for value in categories %}<option value="{{ value }}" {% if filters.category == value %}selected{% endif %}>{{ t("category." ~ value) }}</option>{% endfor %}
+  </select>
+  <select name="channel" aria-label="{{ t('ui.col.channel') }}">
+    <option value="">{{ t("ui.col.channel") }}: {{ t("ui.all") }}</option>
+    {% for value in channels %}<option value="{{ value }}" {% if filters.channel == value %}selected{% endif %}>{{ value }}</option>{% endfor %}
+  </select>
+  <button type="submit">{{ t("ui.filter") }}</button>
+</form>
+<div class="card flush" id="inbox-rows" hx-get="/panel/inbox?{{ query }}" hx-trigger="every 5s" hx-swap="innerHTML">
+  {% include "_inbox_rows.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t("ui.login.title") }} · {{ company }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="centered">
+  <form class="card login" method="post" action="/panel/login">
+    <span class="brand-mark" aria-hidden="true">AO</span>
+    <h1>{{ t("ui.app") }}</h1>
+    <p class="muted">{{ company }}</p>
+    {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+    {% if demo_mode %}<p class="hint">{{ t("ui.login.demo_hint") }}</p>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="password">{{ t("ui.login.password") }}</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit">{{ t("ui.login.submit") }}</button>
+    <div class="langs">
+      {% for code in langs %}<a href="/panel/login?lang={{ code }}" {% if code == lang %}aria-current="true"{% endif %}>{{ code|upper }}</a>{% endfor %}
+    </div>
+  </form>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<form class="card stack" method="post" action="/request">
+  {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+  <input type="hidden" name="token" value="{{ token or '' }}">
+  <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+  {% if not token %}
+  <div class="row">
+    <div class="grow"><label for="name">{{ t("webform.name") }}</label><input id="name" name="name" maxlength="120" autocomplete="name"></div>
+    <div class="grow"><label for="contact">{{ t("webform.contact") }}</label><input id="contact" name="contact" maxlength="120"></div>
+  </div>
+  {% endif %}
+  <label for="text">{{ t("webform.message") }}</label>
+  <textarea id="text" name="text" rows="{{ 3 if token else 5 }}" maxlength="4000" required></textarea>
+  <button type="submit">{{ t("webform.submit") }}</button>
+</form>

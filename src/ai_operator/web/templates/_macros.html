@@ -1,0 +1,11 @@
+{% macro status_badge(t, status) %}<span class="badge s-{{ status }}">{{ t("status." ~ status) }}</span>{% endmacro %}
+{% macro category_badge(t, category) %}{% if category %}<span class="badge c-{{ category }}">{{ t("category." ~ category) }}</span>{% else %}<span class="muted">-</span>{% endif %}{% endmacro %}
+{% macro lead_badge(t, status) %}<span class="badge l-{{ status }}">{{ t("lead." ~ status) }}</span>{% endmacro %}
+{% macro confidence(value) %}{% if value is not none %}<span class="conf" title="{{ '%.2f'|format(value) }}"><span style="width: {{ (value * 100)|round|int }}%"></span></span> <small>{{ (value * 100)|round|int }}%</small>{% else %}<span class="muted">-</span>{% endif %}{% endmacro %}
+{% macro csrf(token) %}<input type="hidden" name="csrf_token" value="{{ token }}">{% endmacro %}
+{% macro legend(series) %}<ul class="legend">{% for s in series %}<li><i style="background: var(--series-{{ s.slot }})"></i>{{ s.label }}</li>{% endfor %}</ul>{% endmacro %}
+{% macro data_table(t, labels, series) %}
+<details class="table-view"><summary>{{ t("ui.chart.table") }}</summary>
+<table class="data"><thead><tr><th></th>{% for s in series %}<th class="num">{{ s.label }}</th>{% endfor %}</tr></thead>
+<tbody>{% for label in labels %}{% set i = loop.index0 %}<tr><td>{{ label }}</td>{% for s in series %}<td class="num">{{ "%g"|format(s.values[i]) }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></details>
+{% endmacro %}

@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
-from tests.conftest import FakeChannel, drain, telegram_message
 
 from ai_operator.context import AppContext
 from ai_operator.core.message import InboundMessage
@@ -22,6 +21,7 @@ from ai_operator.db.models import (
     Outbound,
 )
 from ai_operator.queue.ingest import ingest
+from tests.conftest import FakeChannel, drain, telegram_message
 
 
 async def _one(ctx: AppContext, model: type, **filters: object):  # type: ignore[no-untyped-def]
@@ -221,7 +221,8 @@ async def test_reprocessing_a_finished_message_changes_nothing(ctx: AppContext, 
     await drain(ctx)
 
     assert await _count(ctx, Outbound) == 1
-    assert len(_sent(ctx, "telegram")) == 1
+    [reply] = _sent(ctx, "telegram")
+    assert "Monday to Saturday from 09:00 to 19:00" in reply.text
 
 
 async def test_delivery_failure_is_retried_then_succeeds(ctx: AppContext, kb: int) -> None:

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.kb") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.kb") }}{% endblock %}
+{% block actions %}
+<form class="inline" method="post" action="/panel/kb/reindex">{{ m.csrf(csrf_token) }}<button class="ghost" type="submit">{{ t("ui.kb.reindex") }}</button></form>
+<a class="button" href="/panel/kb/new">{{ t("ui.kb.add") }}</a>
+{% endblock %}
+{% block content %}
+<p class="lead-text">{{ t("ui.kb.intro") }}</p>
+{% if stale %}<p class="alert">{{ t("ui.kb.stale", n=stale) }}</p>{% endif %}
+<div class="card">
+  <h2>{{ t("ui.kb.try") }}</h2>
+  <input type="search" name="q" placeholder="{{ t('ui.kb.try_placeholder') }}" aria-label="{{ t('ui.kb.try') }}"
+         hx-get="/panel/kb/search" hx-trigger="input changed delay:300ms, search" hx-target="#kb-results">
+  <div id="kb-results"></div>
+  <small class="muted">{{ t("ui.kb.model") }}: <code>{{ embedding_model }}</code></small>
+</div>
+<div class="card flush">
+<table class="data">
+  <thead><tr><th>{{ t("ui.col.title") }}</th><th>{{ t("ui.language") }}</th><th class="num">{{ t("ui.kb.chunks") }}</th><th>{{ t("ui.col.updated") }}</th><th></th></tr></thead>
+  <tbody>
+  {% for document, chunks in documents %}
+    <tr>
+      <td><a href="/panel/kb/{{ document.id }}">{{ document.title }}</a></td>
+      <td><span class="chip">{{ document.language }}</span></td>
+      <td class="num">{{ chunks }}</td>
+      <td class="muted nowrap">{{ fmt_ts(document.updated_at) }}</td>
+      <td>
+        <form class="inline" method="post" action="/panel/kb/{{ document.id }}/delete" onsubmit="return confirm('{{ t('ui.confirm') }}')">
+          {{ m.csrf(csrf_token) }}<button class="link danger" type="submit">{{ t("ui.delete") }}</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">{{ t("ui.empty.list") }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

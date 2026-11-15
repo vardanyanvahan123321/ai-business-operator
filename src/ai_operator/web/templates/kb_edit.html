@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.kb") }}{% endblock %}
+{% block heading %}<a class="muted" href="/panel/kb">{{ t("ui.nav.kb") }}</a> / {{ document.title if document else t("ui.kb.add") }}{% endblock %}
+{% block content %}
+{% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+<form class="card stack" method="post" action="/panel/kb" enctype="multipart/form-data">
+  {{ m.csrf(csrf_token) }}
+  <input type="hidden" name="document_id" value="{{ document.id if document else '' }}">
+  <div class="row">
+    <div class="grow"><label for="title">{{ t("ui.col.title") }}</label><input id="title" name="title" value="{{ document.title if document else '' }}"></div>
+    <div><label for="language">{{ t("ui.language") }}</label>
+      <select id="language" name="language">{% for code in langs %}<option value="{{ code }}" {% if (document.language if document else lang) == code %}selected{% endif %}>{{ code|upper }}</option>{% endfor %}</select>
+    </div>
+  </div>
+  <label for="content">{{ t("ui.kb.content") }}</label>
+  <textarea id="content" name="content" rows="18" class="mono">{{ document.content if document else '' }}</textarea>
+  {% if not document %}
+  <label for="upload">{{ t("ui.kb.upload") }}</label>
+  <input id="upload" name="upload" type="file" accept=".md,.txt,text/plain,text/markdown">
+  {% endif %}
+  <div class="row"><button type="submit">{{ t("ui.save") }}</button><span class="muted">{{ t("ui.kb.save_hint") }}</span></div>
+</form>
+{% endblock %}

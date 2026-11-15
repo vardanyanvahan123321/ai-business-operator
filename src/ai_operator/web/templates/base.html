@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t("ui.app") }}{% endblock %} · {{ company }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/panel">
+      <span class="brand-mark" aria-hidden="true">AO</span>
+      <span><strong>{{ t("ui.app") }}</strong><small>{{ company }}</small></span>
+    </a>
+    <nav aria-label="{{ t('ui.nav') }}">
+      {% set items = [
+        ("/panel", "ui.nav.dashboard"), ("/panel/inbox", "ui.nav.inbox"),
+        ("/panel/handoffs", "ui.nav.handoffs"), ("/panel/leads", "ui.nav.leads"),
+        ("/panel/kb", "ui.nav.kb"), ("/panel/prices", "ui.nav.prices"),
+        ("/panel/reports", "ui.nav.reports"), ("/panel/logs", "ui.nav.logs"),
+        ("/panel/settings", "ui.nav.settings")] %}
+      {% for href, key in items %}
+      <a href="{{ href }}" {% if path == href or (href != "/panel" and path.startswith(href)) %}aria-current="page"{% endif %}>{{ t(key) }}</a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="langs" aria-label="{{ t('ui.language') }}">
+        {% for code in langs %}
+        <a href="/panel/lang/{{ code }}" {% if code == lang %}aria-current="true"{% endif %}>{{ code|upper }}</a>
+        {% endfor %}
+      </div>
+      <a class="muted" href="/request" target="_blank" rel="noopener">{{ t("ui.public_form") }} ↗</a>
+      <form method="post" action="/panel/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="link" type="submit">{{ t("ui.logout") }}</button>
+      </form>
+    </div>
+  </aside>
+  <main>
+    {% if demo_mode %}<div class="banner">{{ t("ui.demo_banner") }}</div>{% endif %}
+    <header class="page-head">
+      <h1>{% block heading %}{% endblock %}</h1>
+      <div class="actions">{% block actions %}{% endblock %}</div>
+    </header>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

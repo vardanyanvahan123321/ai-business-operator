@@ -1,0 +1,12 @@
+{% if query %}
+<ol class="results">
+  {% for chunk in results %}
+  <li>
+    <div class="meta-row"><strong>{{ chunk.title }}</strong><span class="chip">{{ chunk.language }}</span><small class="muted">{{ t("ui.kb.score") }} {{ "%.2f"|format(chunk.score) }}</small></div>
+    <p>{{ chunk.content }}</p>
+  </li>
+  {% else %}
+  <li class="muted">{{ t("ui.kb.no_match") }}</li>
+  {% endfor %}
+</ol>
+{% endif %}

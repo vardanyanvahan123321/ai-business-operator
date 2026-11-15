@@ -1,0 +1,33 @@
+{% import "_macros.html" as m %}
+<table class="data">
+  <thead><tr>
+    <th>#</th><th>{{ t("ui.col.received") }}</th><th>{{ t("ui.col.channel") }}</th><th>{{ t("ui.col.from") }}</th>
+    <th>{{ t("ui.col.message") }}</th><th>{{ t("ui.col.category") }}</th><th>{{ t("ui.col.confidence") }}</th><th>{{ t("ui.col.status") }}</th>
+  </tr></thead>
+  <tbody>
+  {% for message in messages %}
+    <tr>
+      <td class="muted">{{ message.id }}</td>
+      <td class="nowrap muted">{{ fmt_ts(message.received_at) }}</td>
+      <td><span class="chip">{{ message.channel }}</span></td>
+      <td>{{ message.sender_name or "-" }}</td>
+      <td><a href="/panel/inbox/{{ message.id }}">{{ message.text|truncate(80) }}</a>{% if message.injection_suspected %} <span class="badge s-dead" title="{{ t('reason.injection') }}">!</span>{% endif %}</td>
+      <td>{{ m.category_badge(t, message.category) }}</td>
+      <td class="nowrap">{{ m.confidence(message.confidence) }}</td>
+      <td>{{ m.status_badge(t, message.status) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="muted">{{ t("ui.empty.list") }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="pager">
+  <span class="muted">{{ t("ui.total", n=total) }}</span>
+  {% if pages > 1 %}
+  <span>
+    {% if page > 1 %}<a href="/panel/inbox?page={{ page - 1 }}&status={{ filters.status or '' }}&category={{ filters.category or '' }}&channel={{ filters.channel or '' }}&q={{ filters.q|urlencode }}">←</a>{% endif %}
+    {{ page }} / {{ pages }}
+    {% if page < pages %}<a href="/panel/inbox?page={{ page + 1 }}&status={{ filters.status or '' }}&category={{ filters.category or '' }}&channel={{ filters.channel or '' }}&q={{ filters.q|urlencode }}">→</a>{% endif %}
+  </span>
+  {% endif %}
+</div>

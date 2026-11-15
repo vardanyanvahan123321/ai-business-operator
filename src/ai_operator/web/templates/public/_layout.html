@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t("webform.title") }} · {{ company }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+</head>
+<body class="public">
+  <header class="public-head">
+    <div><span class="brand-mark" aria-hidden="true">AO</span> <strong>{{ company }}</strong></div>
+    <div class="langs">{% for code in langs %}<a href="?lang={{ code }}" {% if code == lang %}aria-current="true"{% endif %}>{{ code|upper }}</a>{% endfor %}</div>
+  </header>
+  <main class="public-main">
+    {% block content %}{% endblock %}
+    <p class="muted small">{{ business.working_hours.get(lang) }} · {{ business.seller.phone }}{% if demo_mode %} · {{ t("invoice.demo_note") }}{% endif %}</p>
+  </main>
+</body>
+</html>

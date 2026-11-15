@@ -61,8 +61,11 @@ src = ["src", "tests", "evals"]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF", "ASYNC", "S", "PT"]
 ignore = ["RUF001", "RUF002", "RUF003", "S101", "B008"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["ai_operator", "tests", "evals"]
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S311", "ASYNC230", "ASYNC240", "PT022", "E501"]
+"tests/**" = ["S105", "S106", "S311", "ASYNC230", "ASYNC240", "PT022", "PT018", "E501"]
 "demo/**" = ["S"]
 "scripts/**" = ["S"]
 

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}#{{ message.id }}{% endblock %}
+{% block heading %}<a class="muted" href="/panel/inbox">{{ t("ui.nav.inbox") }}</a> / #{{ message.id }}{% endblock %}
+{% block content %}
+<section class="grid-2 wide-left">
+  <div>
+    <div class="card">
+      <div class="meta-row">
+        <span class="chip">{{ message.channel }}</span>
+        <strong>{{ message.sender_name or message.sender_id }}</strong>
+        <span class="muted">{{ fmt_ts(message.received_at) }}</span>
+        {{ m.status_badge(t, message.status) }}
+      </div>
+      {% if message.subject %}<p class="muted">{{ message.subject }}</p>{% endif %}
+      <div class="bubble in">{{ message.text }}</div>
+      {% for reply in message.outbound %}
+      <div class="bubble out">
+        <small class="muted">{{ t("ui.reply." ~ reply.kind) }} · {{ t("ui.delivery." ~ reply.status) }}{% if reply.sent_at %} · {{ fmt_ts(reply.sent_at) }}{% endif %}</small>
+        {{ reply.text }}
+        {% if reply.attachments %}<small class="muted">📎 {{ t("invoice.title") }}</small>{% endif %}
+      </div>
+      {% endfor %}
+      {% if message.error %}<p class="alert">{{ message.error }}</p>{% endif %}
+    </div>
+
+    {% if message.handoff %}
+    <div class="card {% if message.handoff.status == 'open' %}attention{% endif %}">
+      <h2>{{ t("ui.handoff.title") }}: {{ t("reason." ~ message.handoff.reason) }}</h2>
+      {% if message.handoff.status == "open" %}
+      <form method="post" action="/panel/handoffs/{{ message.handoff.id }}/resolve" class="stack">
+        {{ m.csrf(csrf_token) }}
+        <label for="reply">{{ t("ui.handoff.reply_label") }}</label>
+        <textarea id="reply" name="reply" rows="4" placeholder="{{ t('ui.handoff.placeholder') }}"></textarea>
+        <div class="row">
+          <button type="submit">{{ t("ui.handoff.send") }}</button>
+          <span class="muted">{{ t("ui.handoff.hint") }}</span>
+        </div>
+      </form>
+      {% else %}
+      <p class="muted">{{ t("ui.handoff.resolved") }} · {{ fmt_ts(message.handoff.resolved_at) }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>{{ t("ui.analysis") }}</h2>
+      <dl class="kv">
+        <dt>{{ t("ui.col.category") }}</dt><dd>{{ m.category_badge(t, message.category) }}</dd>
+        <dt>{{ t("ui.col.confidence") }}</dt><dd>{{ m.confidence(message.confidence) }}</dd>
+        <dt>{{ t("ui.language") }}</dt><dd>{{ message.language or "-" }}</dd>
+        <dt>{{ t("ui.attempts") }}</dt><dd>{{ message.attempts }}</dd>
+        {% if message.analysis %}
+        <dt>{{ t("ui.summary") }}</dt><dd>{{ message.analysis.summary or "-" }}</dd>
+        {% for key, value in message.analysis.extraction.items() if value is not none %}
+        <dt>{{ key }}</dt><dd>{{ value }}</dd>
+        {% endfor %}
+        {% if message.analysis.injection_patterns %}
+        <dt>{{ t("reason.injection") }}</dt><dd>{{ message.analysis.injection_patterns|join(", ") }}</dd>
+        {% endif %}
+        {% endif %}
+      </dl>
+      {% if message.analysis and message.analysis.sources %}
+      <h3>{{ t("ui.sources") }}</h3>
+      <ul class="plain">
+        {% for source in message.analysis.sources %}
+        <li><a href="/panel/kb/{{ source.document_id }}">{{ source.title }}</a> <small class="muted">{{ "%.2f"|format(source.score) }}</small></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% if lead %}
+    <div class="card">
+      <h2>{{ t("ui.lead") }} #{{ lead.id }} {{ m.lead_badge(t, lead.status) }}</h2>
+      <dl class="kv">
+        <dt>{{ t("ui.col.name") }}</dt><dd>{{ lead.name or "-" }}</dd>
+        <dt>{{ t("ui.col.phone") }}</dt><dd>{{ lead.phone or lead.email or "-" }}</dd>
+        <dt>{{ t("ui.col.service") }}</dt><dd>{{ business.service(lead.service_code).name.get(lang) if business.service(lead.service_code) else "-" }}</dd>
+        <dt>{{ t("ui.col.when") }}</dt><dd>{{ fmt_dt(lead.scheduled_at) }}</dd>
+        <dt>{{ t("ui.col.amount") }}</dt><dd>{{ fmt_money(lead.amount) }} {{ lead.currency }}</dd>
+      </dl>
+    </div>
+    {% endif %}
+    <div class="card">
+      <h2>{{ t("ui.timeline") }}</h2>
+      <ul class="timeline">
+        {% for event in events %}
+        <li class="lvl-{{ event.level }}"><span class="muted">{{ fmt_ts(event.ts) }}</span> <code>{{ event.kind }}</code></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

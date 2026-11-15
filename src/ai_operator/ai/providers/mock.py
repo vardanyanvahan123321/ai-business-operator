@@ -104,11 +104,13 @@ class MockProvider(AIProvider):
         if overlap < _MIN_OVERLAP:
             return GroundedAnswer(found=False)
 
-        sentences = [
+        lines = [
             s.strip()
             for s in _SENTENCE_END.split(best.content)
             if s.strip() and not s.lstrip().startswith("#")
         ]
+        # A chunk starts with its section heading; a heading is not an answer.
+        sentences = [s for s in lines if s[-1] in ".!?։:" or len(s) > 60] or lines
         ranked = sorted(
             range(len(sentences)),
             key=lambda i: content_overlap(question, sentences[i]),

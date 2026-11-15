@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.dashboard") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.dashboard") }}{% endblock %}
+{% block content %}
+<section class="tiles">
+  <div class="tile"><span>{{ t("ui.kpi.today") }}</span><strong>{{ kpis.messages_today }}</strong><small>{{ t("ui.kpi.week", n=kpis.messages_week) }}</small></div>
+  <div class="tile"><span>{{ t("ui.kpi.auto_rate") }}</span><strong>{% if kpis.auto_rate is not none %}{{ kpis.auto_rate }}%{% else %}-{% endif %}</strong><small>{{ t("ui.kpi.auto_rate_hint") }}</small></div>
+  <div class="tile"><span>{{ t("ui.kpi.median") }}</span><strong>{% if kpis.median_seconds is not none %}{{ "%.1f"|format(kpis.median_seconds) }} {{ t("ui.seconds") }}{% else %}-{% endif %}</strong><small>{{ t("ui.kpi.median_hint") }}</small></div>
+  <div class="tile"><span>{{ t("ui.kpi.leads") }}</span><strong>{{ kpis.leads_week }}</strong><small>{{ fmt_money(kpis.leads_amount_week) }} {{ business.currency }}</small></div>
+  <a class="tile {% if kpis.open_handoffs %}attention{% endif %}" href="/panel/handoffs"><span>{{ t("ui.kpi.handoffs") }}</span><strong>{{ kpis.open_handoffs }}</strong><small>{{ t("ui.kpi.handoffs_hint") }}</small></a>
+  <a class="tile {% if kpis.dead_letters %}attention{% endif %}" href="/panel/logs"><span>{{ t("ui.kpi.dead") }}</span><strong>{{ kpis.dead_letters }}</strong><small>{{ t("ui.kpi.dead_hint") }}</small></a>
+</section>
+
+{% if not has_data %}
+<p class="empty">{{ t("ui.empty.dashboard") }} <a href="/request" target="_blank" rel="noopener">{{ t("ui.public_form") }}</a></p>
+{% else %}
+<section class="grid-2">
+  <div class="card">
+    <h2>{{ t("ui.chart.outcomes") }}</h2>
+    {{ m.legend(outcome_series) }}
+    {{ outcome_chart|safe }}
+    {{ m.data_table(t, outcome_labels, outcome_series) }}
+  </div>
+  <div class="card">
+    <h2>{{ t("ui.chart.revenue") }}, {{ business.currency }}</h2>
+    {{ revenue_chart|safe }}
+  </div>
+  <div class="card">
+    <h2>{{ t("ui.chart.categories") }}</h2>
+    {{ category_chart|safe }}
+  </div>
+  <div class="card">
+    <h2>{{ t("ui.chart.channels") }}</h2>
+    {{ channel_chart|safe }}
+  </div>
+</section>
+{% endif %}
+
+<section class="grid-2">
+  <div class="card">
+    <h2>{{ t("ui.recent") }}</h2>
+    <table class="data">
+      <tbody>
+      {% for message in recent %}
+        <tr>
+          <td class="nowrap muted">{{ fmt_ts(message.received_at) }}</td>
+          <td><a href="/panel/inbox/{{ message.id }}">{{ message.text|truncate(70) }}</a></td>
+          <td>{{ m.status_badge(t, message.status) }}</td>
+        </tr>
+      {% else %}
+        <tr><td class="muted">{{ t("ui.empty.list") }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>{{ t("ui.last_report") }}</h2>
+    {% if report %}<pre class="report">{{ report.content }}</pre>{% else %}<p class="muted">{{ t("ui.empty.report") }}</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.logs") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.logs") }}{% endblock %}
+{% block content %}
+<div class="card {% if dead_letters %}attention{% endif %}">
+  <h2>{{ t("ui.logs.dead") }} ({{ dead_letters|length }})</h2>
+  <p class="muted">{{ t("ui.logs.dead_hint") }}</p>
+  {% if dead_letters %}
+  <table class="data">
+    <thead><tr><th>{{ t("ui.col.created") }}</th><th>{{ t("ui.logs.job") }}</th><th>#</th><th>{{ t("ui.attempts") }}</th><th>{{ t("ui.logs.error") }}</th><th></th></tr></thead>
+    <tbody>
+    {% for dead in dead_letters %}
+      <tr><td class="nowrap muted">{{ fmt_ts(dead.created_at) }}</td><td><code>{{ dead.job }}</code></td><td>{{ dead.ref_id }}</td><td>{{ dead.attempts }}</td><td>{{ dead.error|truncate(140) }}</td>
+      <td><form class="inline" method="post" action="/panel/logs/dead/{{ dead.id }}/retry">{{ m.csrf(csrf_token) }}<button class="ghost" type="submit">{{ t("ui.logs.retry") }}</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+<div class="tabs">
+  <a href="/panel/logs" {% if not level %}aria-current="page"{% endif %}>{{ t("ui.all") }}</a>
+  {% for value in ["info", "warning", "error"] %}<a href="/panel/logs?level={{ value }}" {% if level == value %}aria-current="page"{% endif %}>{{ value }}</a>{% endfor %}
+  <span class="muted push">{{ t("ui.logs.pending", n=pending_outbound) }} · {{ t("ui.logs.masked") }}</span>
+</div>
+<div class="card flush">
+<table class="data">
+  <thead><tr><th>{{ t("ui.col.time") }}</th><th>{{ t("ui.logs.level") }}</th><th>{{ t("ui.logs.event") }}</th><th>#</th><th>{{ t("ui.logs.details") }}</th></tr></thead>
+  <tbody>
+  {% for event in events %}
+    <tr class="lvl-{{ event.level }}"><td class="nowrap muted">{{ fmt_ts(event.ts) }}</td><td>{{ event.level }}</td><td><code>{{ event.kind }}</code></td>
+    <td>{% if event.message_id %}<a href="/panel/inbox/{{ event.message_id }}">{{ event.message_id }}</a>{% endif %}</td>
+    <td class="mono small">{% for key, value in event.data.items() if value is not none and value != [] %}<span class="kvp">{{ key }}=<b>{{ value }}</b></span> {% endfor %}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">{{ t("ui.empty.list") }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

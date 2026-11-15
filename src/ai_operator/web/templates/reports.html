@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ t("ui.nav.reports") }}{% endblock %}
+{% block heading %}{{ t("ui.nav.reports") }}{% endblock %}
+{% block actions %}<form class="inline" method="post" action="/panel/reports/run">{{ m.csrf(csrf_token) }}<button type="submit">{{ t("ui.reports.run") }}</button></form>{% endblock %}
+{% block content %}
+<section class="grid-2">
+  <div>
+    <h2>{{ t("ui.reports.morning") }}</h2>
+    {% for report in reports %}
+    <div class="card"><pre class="report">{{ report.content }}</pre></div>
+    {% else %}<p class="empty">{{ t("ui.empty.report") }}</p>{% endfor %}
+  </div>
+  <div>
+    <h2>{{ t("ui.reports.notifications") }}</h2>
+    <div class="card flush">
+    <table class="data"><tbody>
+    {% for item in notifications %}
+      <tr><td class="nowrap muted">{{ fmt_ts(item.created_at) }}</td><td><span class="chip">{{ item.kind }}</span></td><td class="pre">{{ item.text|truncate(220) }}</td><td class="muted">{{ item.delivered_via or t("ui.delivery." ~ item.status) }}</td></tr>
+    {% else %}<tr><td class="muted">{{ t("ui.empty.list") }}</td></tr>{% endfor %}
+    </tbody></table>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "public/_layout.html" %}
+{% block content %}
+<h1>{{ t("webform.title") }}</h1>
+<div id="thread">{% include "public/_thread.html" %}</div>
+<h2>{{ t("webform.another") }}</h2>
+{% include "public/_form.html" %}
+{% endblock %}
