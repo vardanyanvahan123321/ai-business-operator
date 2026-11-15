@@ -91,6 +91,7 @@ addopts = "-q --strict-markers"
 [tool.coverage.run]
 source = ["ai_operator"]
 branch = true
+concurrency = ["greenlet", "thread"]
 omit = ["*/migrations/*"]
 
 [tool.coverage.report]
