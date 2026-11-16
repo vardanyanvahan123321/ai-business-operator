@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import date, time
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -19,7 +20,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Lang = Literal["en", "ru", "hy"]
@@ -174,6 +175,41 @@ class Seller(BaseModel):
     bank_details: str = ""
 
 
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _default_hours() -> dict[str, tuple[time, time] | None]:
+    return {day: (time(9), time(19)) for day in WEEKDAYS[:6]}
+
+
+class Schedule(BaseModel):
+    """Machine-readable opening hours: what the booking rules check slots against.
+
+    ``working_hours`` above stays the human-readable text shown to customers.
+    """
+
+    # Weekday -> (open, close); a missing or null day is a day off.
+    hours: dict[str, tuple[time, time] | None] = Field(default_factory=_default_hours)
+    slot_minutes: int = Field(default=30, ge=5, le=240)
+    # How many customers can be served at the same time (lifts, mechanics, chairs...).
+    parallel_bookings: int = Field(default=1, ge=1)
+
+    @field_validator("hours")
+    @classmethod
+    def _known_days(
+        cls, value: dict[str, tuple[time, time] | None]
+    ) -> dict[str, tuple[time, time] | None]:
+        for day, span in value.items():
+            if day not in WEEKDAYS:
+                raise ValueError(f"unknown weekday {day!r}; use one of {', '.join(WEEKDAYS)}")
+            if span is not None and span[0] >= span[1]:
+                raise ValueError(f"{day}: opening time must be before closing time")
+        return value
+
+    def hours_on(self, day: date) -> tuple[time, time] | None:
+        return self.hours.get(WEEKDAYS[day.weekday()])
+
+
 class BusinessConfig(BaseModel):
     name: LocalizedText
     description: LocalizedText
@@ -182,8 +218,11 @@ class BusinessConfig(BaseModel):
     default_language: Lang = "en"
     owner_language: Lang = "ru"
     working_hours: LocalizedText
+    schedule: Schedule = Field(default_factory=Schedule)
     seller: Seller
     services: list[Service]
+    # Offered when a request matches no service unambiguously ("something is knocking").
+    fallback_service: str | None = None
     competitors: list[Competitor] = Field(default_factory=list)
     scrape: ScrapeConfig = Field(default_factory=ScrapeConfig)
     morning_report: ReportConfig = Field(default_factory=ReportConfig)
@@ -191,6 +230,12 @@ class BusinessConfig(BaseModel):
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
+
+    @model_validator(mode="after")
+    def _fallback_exists(self) -> BusinessConfig:
+        if self.fallback_service and self.service(self.fallback_service) is None:
+            raise ValueError(f"fallback_service {self.fallback_service!r} is not in services")
+        return self
 
     def service(self, code: str | None) -> Service | None:
         if not code:

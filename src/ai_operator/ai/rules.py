@@ -151,13 +151,42 @@ def find_amount(text: str) -> float | None:
 
 def find_service(text: str, keywords_by_code: dict[str, tuple[str, ...]]) -> str | None:
     """The service whose keywords occur most often in the text."""
+    return match_service(text, keywords_by_code)[0]
+
+
+def match_service(
+    text: str, keywords_by_code: dict[str, tuple[str, ...]]
+) -> tuple[str | None, bool]:
+    """The best-matching service and whether the match is unambiguous (no tie)."""
     low = text.lower()
-    best_code, best_hits = None, 0
-    for code, keywords in keywords_by_code.items():
-        hits = sum(1 for kw in keywords if kw.lower() in low)
-        if hits > best_hits:
-            best_code, best_hits = code, hits
-    return best_code
+    # A keyword must start a word: "шин" is in "шиномонтаж" but not in "машину",
+    # "tire" is in "tires" but not in "entire".
+    hits = {
+        code: sum(1 for kw in keywords if re.search(rf"(?<!\w){re.escape(kw.lower())}", low))
+        for code, keywords in keywords_by_code.items()
+    }
+    best_hits = max(hits.values(), default=0)
+    if best_hits == 0:
+        return None, False
+    best = [code for code, count in hits.items() if count == best_hits]
+    return best[0], len(best) == 1
+
+
+_YES = re.compile(
+    r"^\W*(yes|yep|yeah|ok|okay|sure|confirm|correct|да|ага|ок|хорошо|подтверждаю|верно|"
+    r"давайте|այո|հա|լավ|հաստատում եմ)(?!\w)",
+    re.IGNORECASE,
+)
+_NO = re.compile(r"^\W*(no|nope|нет|не надо|ոչ|չէ)(?!\w)", re.IGNORECASE)
+
+
+def find_confirmation(text: str) -> bool | None:
+    """ "Yes" / "no" at the start of a reply to "shall I book you for ...?"."""
+    if _YES.search(text):
+        return True
+    if _NO.search(text):
+        return False
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +288,32 @@ def _safe_date(
     if candidate < today and not explicit_year:
         candidate = candidate.replace(year=year + 1)
     return candidate
+
+
+def year_stated(text: str) -> bool | None:
+    """True/False for a calendar date with/without a year; None for relative or no date."""
+    low = text.lower()
+    if any(w in low for w in (*_DAY_AFTER_TOMORROW, *_TOMORROW, *_TODAY)):
+        return None
+    numeric = _NUMERIC_DATE.search(low)
+    if numeric:
+        return bool(numeric.group(3))
+    for names in _MONTHS:
+        for name in names:
+            position = low.find(name)
+            if position != -1 and _DAY_NUMBER.search(
+                low[max(0, position - 6) : position + len(name) + 12]
+            ):
+                return False
+    return None
+
+
+def find_time(text: str) -> tuple[int, int] | None:
+    return _find_time(text.lower())
+
+
+def has_date(text: str, now: datetime) -> bool:
+    return _find_date(text.lower(), now) is not None
 
 
 def parse_datetime(text: str, now: datetime) -> datetime | None:

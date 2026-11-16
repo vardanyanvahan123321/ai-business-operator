@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator, Iterator
+from datetime import time
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,13 @@ from ai_operator.actions.sheets import CsvSink  # noqa: E402
 from ai_operator.ai.providers.mock import MockProvider  # noqa: E402
 from ai_operator.channels.base import Channel, ChannelRegistry  # noqa: E402
 from ai_operator.channels.webform import WebFormChannel  # noqa: E402
-from ai_operator.config import BusinessConfig, Settings, load_business_config  # noqa: E402
+from ai_operator.config import (  # noqa: E402
+    WEEKDAYS,
+    BusinessConfig,
+    Schedule,
+    Settings,
+    load_business_config,
+)
 from ai_operator.context import AppContext  # noqa: E402
 from ai_operator.core.message import InboundMessage, OutboundMessage  # noqa: E402
 from ai_operator.db.session import make_engine, make_session_factory  # noqa: E402
@@ -87,8 +94,19 @@ def _migrated() -> Iterator[None]:
 
 
 @pytest.fixture(scope="session")
-def business() -> BusinessConfig:
+def real_business() -> BusinessConfig:
+    """The demo config exactly as shipped (Sunday is a day off)."""
     return load_business_config(ROOT / "config" / "business.yaml")
+
+
+@pytest.fixture(scope="session")
+def business(real_business: BusinessConfig) -> BusinessConfig:
+    """Open seven days a week, so "tomorrow at 10" works whatever day the tests run.
+
+    Tests about working hours use fixed dates and ``real_business`` instead.
+    """
+    always_open = Schedule(hours={day: (time(9), time(19)) for day in WEEKDAYS})
+    return real_business.model_copy(update={"schedule": always_open})
 
 
 @pytest.fixture

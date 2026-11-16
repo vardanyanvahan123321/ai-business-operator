@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -110,6 +111,7 @@ class Lead(Base):
     __table_args__ = (
         Index("ix_leads_sender", "channel", "sender_id", "status"),
         Index("ix_leads_created_at", "created_at"),
+        Index("ix_leads_scheduled_at", "scheduled_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -122,6 +124,9 @@ class Lead(Base):
     service_code: Mapped[str | None] = mapped_column(String(64))
     service_text: Mapped[str | None] = mapped_column(String(255))
     scheduled_at: Mapped[datetime | None] = mapped_column()
+    # We proposed ``scheduled_at`` ourselves (e.g. next year's occurrence of a date
+    # that has already passed) and are waiting for the customer's "yes".
+    needs_confirmation: Mapped[bool] = mapped_column(default=False, server_default=false())
     amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     currency: Mapped[str] = mapped_column(String(3), default="AMD")
     language: Mapped[str] = mapped_column(String(5), default="en")

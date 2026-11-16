@@ -12,6 +12,9 @@ Design rules that make this reliable:
   two short transactions, so no row is locked while we wait for a vendor.
 * **Everything is idempotent.** A crash at any point means the job runs again;
   re-running never duplicates a reply, a booking or a notification.
+* **A booking is a reserved slot.** The AI reports the date the customer asked
+  for; code refuses dates in the past, checks working hours and existing
+  bookings (``scheduling.py``) and offers the nearest free slots instead.
 * **Side effects go through the outbox.** ``apply`` only writes rows (reply,
   notification, sheet sync) in the same transaction as the decision; separate
   jobs deliver them and retry on their own.
@@ -24,7 +27,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from ai_operator.actions.audit import audit, notify_owner
@@ -54,12 +57,36 @@ from ai_operator.core.message import (
 from ai_operator.db.models import DeadLetter, Handoff, Lead, Message, Outbound, Setting
 from ai_operator.db.session import session_scope
 from ai_operator.queue import jobs
+from ai_operator.scheduling import (
+    Interval,
+    SlotProblem,
+    check_slot,
+    free_slots_on,
+    has_time,
+    nearest_free_slots,
+    nearest_future,
+)
 
 log = get_logger(__name__)
 
 HISTORY_TURNS = 6
 PENDING_LEAD_TTL = timedelta(hours=48)
 AI_REPLY = "ai_reply"
+DEFAULT_VISIT = timedelta(minutes=60)
+# Statuses that occupy a slot in the calendar.
+ACTIVE_LEADS = (LeadStatus.NEW.value, LeadStatus.CONFIRMED.value)
+# One advisory lock serialises "check the slot, then book it" across workers.
+BOOKING_LOCK = 0x41424F31  # "ABO1"
+SLOT_PROBLEM_REPLY = {
+    SlotProblem.PAST: "reply.order.date_past",
+    SlotProblem.CLOSED: "reply.order.closed",
+    SlotProblem.BUSY: "reply.order.busy",
+    SlotProblem.TIME_NEEDED: "reply.order.time_needed",
+}
+
+
+class SlotTaken(Exception):
+    """Another customer booked the slot between our decision and our commit."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +104,7 @@ class Snapshot:
     history: tuple[HistoryTurn, ...]
     pending_lead_id: int | None
     pending: Extraction | None
+    pending_needs_confirmation: bool
     preferred_language: str | None
     confidence_threshold: float
 
@@ -91,6 +119,8 @@ class LeadDraft:
     scheduled_at: datetime | None
     amount: Decimal | None
     missing: tuple[str, ...]
+    needs_confirmation: bool = False
+    duration: timedelta = DEFAULT_VISIT
 
     @property
     def complete(self) -> bool:
@@ -125,7 +155,12 @@ class Pipeline:
         analysis = await self.ctx.provider.analyze(self._request(snapshot))
         language = self._language(snapshot, analysis)
         decision = await self._decide(snapshot, analysis, language, patterns)
-        queued = await self._apply(snapshot, analysis, language, decision, patterns)
+        try:
+            queued = await self._apply(snapshot, analysis, language, decision, patterns)
+        except SlotTaken:
+            # Lost a race for the slot: decide again, now seeing the other booking.
+            decision = await self._decide(snapshot, analysis, language, patterns)
+            queued = await self._apply(snapshot, analysis, language, decision, patterns)
         for job, ref_id in queued:
             await jobs.safe_enqueue(self.ctx.queue, job, ref_id)
         log.info(
@@ -192,6 +227,7 @@ class Pipeline:
                     name=lead.name,
                     phone=lead.phone,
                     service_code=lead.service_code,
+                    service_certain=lead.service_code is not None,
                     service_text=lead.service_text,
                     scheduled_at=f"{local:%Y-%m-%dT%H:%M}" if local else None,
                 )
@@ -216,6 +252,7 @@ class Pipeline:
                 history=tuple(history),
                 pending_lead_id=lead.id if lead is not None else None,
                 pending=pending,
+                pending_needs_confirmation=bool(lead is not None and lead.needs_confirmation),
                 preferred_language=preference.value.get("lang") if preference else None,
                 confidence_threshold=threshold,
             )
@@ -267,7 +304,7 @@ class Pipeline:
         if analysis.category is Category.QUESTION:
             return await self._answer(snapshot, language)
         if analysis.category is Category.ORDER:
-            return self._book(snapshot, analysis, language)
+            return await self._book(snapshot, analysis, language)
         return Decision(status=MessageStatus.ANSWERED, reply=t(language, "reply.other"))
 
     @staticmethod
@@ -298,26 +335,86 @@ class Pipeline:
         reply = f"{text}\n\n{t(language, 'reply.source', titles=titles)}"
         return Decision(status=MessageStatus.ANSWERED, reply=reply, sources=sources)
 
-    def _book(self, snapshot: Snapshot, analysis: Analysis, language: str) -> Decision:
+    async def _busy(
+        self, session: Any, start: datetime, end: datetime, exclude_lead_id: int | None
+    ) -> list[Interval]:
+        """Slots occupied by other bookings between ``start`` and ``end``."""
         business = self.ctx.business
-        data = analysis.extraction.merged_over(snapshot.pending)
+        longest = max((s.duration_minutes for s in business.services), default=60)
+        rows = await session.execute(
+            select(Lead.id, Lead.scheduled_at, Lead.service_code).where(
+                Lead.status.in_(ACTIVE_LEADS),
+                Lead.scheduled_at >= start - timedelta(minutes=longest),
+                Lead.scheduled_at < end,
+            )
+        )
+        busy: list[Interval] = []
+        for lead_id, scheduled_at, service_code in rows:
+            local = scheduled_at.astimezone(business.tz)
+            if lead_id == exclude_lead_id or not has_time(local):
+                continue
+            service = business.service(service_code)
+            duration = timedelta(minutes=service.duration_minutes) if service else DEFAULT_VISIT
+            busy.append(Interval(local, local + duration))
+        return busy
+
+    async def _book(self, snapshot: Snapshot, analysis: Analysis, language: str) -> Decision:
+        business = self.ctx.business
+        now = snapshot.received_at.astimezone(business.tz)
+        # An uncertain service match is no match: we ask instead of guessing.
+        stated = analysis.extraction
+        data = stated.trusted().merged_over(snapshot.pending)
         contact = str(snapshot.meta.get("contact") or "")
         phone = normalize_phone(data.phone) or normalize_phone(None if "@" in contact else contact)
         email = snapshot.sender_id if snapshot.channel == "email" else None
         if email is None and "@" in contact:
             email = contact.strip()
         service = business.service(data.service_code)
-        when = data.parsed_datetime()
-        if when is not None and when.tzinfo is None:
-            when = when.replace(tzinfo=business.tz)
+        duration = timedelta(minutes=service.duration_minutes) if service else DEFAULT_VISIT
+
+        # --- which moment is the customer asking for? ---------------------------
+        when: datetime | None = None
+        awaiting_yes = False
+        requested = stated.parsed_datetime()
+        if requested is not None:
+            if requested.tzinfo is None:
+                requested = requested.replace(tzinfo=business.tz)
+            # "20.10" written on 16.11 can only mean next year - but we ask first.
+            when, awaiting_yes = nearest_future(requested, now, stated.year_stated)
+        elif snapshot.pending is not None:
+            when = snapshot.pending.parsed_datetime()
+            if when is not None:
+                when = when.replace(tzinfo=business.tz)
+                awaiting_yes = snapshot.pending_needs_confirmation and stated.confirmed is not True
+                if snapshot.pending_needs_confirmation and stated.confirmed is False:
+                    when, awaiting_yes = None, False  # "no": forget the date we proposed
+
+        # --- can that moment be booked? ------------------------------------------
+        problem: SlotProblem | None = None
+        slots: list[datetime] = []
+        if when is not None and not awaiting_yes:
+            window_start = min(when, now) - timedelta(days=1)
+            window_end = max(when, now) + timedelta(days=16)
+            async with self.ctx.sessions() as session:
+                busy = await self._busy(session, window_start, window_end, snapshot.pending_lead_id)
+            problem = check_slot(business.schedule, when, duration, now, busy)
+            if problem is SlotProblem.TIME_NEEDED:
+                slots = free_slots_on(business.schedule, when, duration, now, busy)
+            elif problem is not None:
+                slots = nearest_free_slots(business.schedule, when, duration, now, busy)
+        asked_for = when
+        if problem in (SlotProblem.PAST, SlotProblem.CLOSED, SlotProblem.BUSY):
+            when = None  # never keep a date we have just refused
 
         missing: list[str] = []
         if service is None:
             missing.append("service")
-        if when is None:
+        if when is None or problem is SlotProblem.TIME_NEEDED:
             missing.append("datetime")
         if phone is None and email is None:
             missing.append("phone")
+        if awaiting_yes:
+            missing.append("confirmation")
 
         # The price always comes from our catalogue. A sum written by the customer
         # is kept in the analysis for the owner to see, but never becomes an invoice.
@@ -331,10 +428,13 @@ class Pipeline:
             scheduled_at=when,
             amount=amount,
             missing=tuple(missing),
+            needs_confirmation=awaiting_yes,
+            duration=duration,
         )
         if missing:
-            fields = ", ".join(t(language, f"field.{name}") for name in missing)
-            reply = t(language, "reply.order.missing", fields=fields)
+            reply = self._clarify(
+                language, draft, problem, asked_for, slots, guessed=stated.service_code is not None
+            )
             return Decision(status=MessageStatus.ANSWERED, reply=reply, lead=draft)
 
         assert service is not None
@@ -351,6 +451,67 @@ class Pipeline:
         if amount is not None:
             lines.append(t(language, "reply.order.invoice"))
         return Decision(status=MessageStatus.ANSWERED, reply="\n".join(lines), lead=draft)
+
+    def _clarify(
+        self,
+        language: str,
+        draft: LeadDraft,
+        problem: SlotProblem | None,
+        asked_for: datetime | None,
+        slots: list[datetime],
+        guessed: bool,
+    ) -> str:
+        """The reply for a booking that cannot be registered yet. It never quotes a price."""
+        business = self.ctx.business
+        tz = business.tz
+        lines: list[str] = []
+        explained: set[str] = set()
+
+        if "service" in draft.missing:
+            # Either nothing was named, or what was described does not map to exactly
+            # one service. We list what we do; we do not pick "the closest one".
+            names = ", ".join(s.name.get(language) for s in business.services)
+            unclear = guessed or bool(draft.service_text)
+            key = "reply.order.service_unclear" if unclear else "reply.order.service_ask"
+            lines.append(t(language, key, services=names))
+            fallback = business.service(business.fallback_service)
+            if fallback is not None:
+                lines.append(
+                    t(language, "reply.order.service_fallback", service=fallback.name.get(language))
+                )
+            explained.add("service")
+
+        if problem is not None and asked_for is not None:
+            date = (
+                format_datetime(asked_for, language, tz)
+                if has_time(asked_for)
+                else f"{asked_for.astimezone(tz):%d.%m.%Y}"
+            )
+            hours = business.working_hours.get(language)
+            lines.append(t(language, SLOT_PROBLEM_REPLY[problem], date=date, hours=hours))
+            if slots and problem is SlotProblem.TIME_NEEDED:
+                options = ", ".join(f"{s.astimezone(tz):%H:%M}" for s in slots)
+                lines.append(t(language, "reply.order.slots_day", slots=options))
+            elif slots:
+                options = ", ".join(format_datetime(s, language, tz) for s in slots)
+                lines.append(t(language, "reply.order.slots", slots=options))
+            explained.add("datetime")
+        if draft.needs_confirmation:
+            lines.append(
+                t(
+                    language,
+                    "reply.order.confirm_date",
+                    date=format_datetime(draft.scheduled_at, language, tz),
+                )
+            )
+        explained.add("confirmation")
+
+        rest = [name for name in draft.missing if name not in explained]
+        if rest:
+            fields = ", ".join(t(language, f"field.{name}") for name in rest)
+            key = "reply.order.also_missing" if lines else "reply.order.missing"
+            lines.append(t(language, key, fields=fields))
+        return "\n".join(lines)
 
     # ---------------------------------------------------------------- apply
 
@@ -420,6 +581,8 @@ class Pipeline:
 
             attachments: list[dict[str, Any]] = []
             if decision.lead is not None:
+                if decision.lead.complete:
+                    await self._reserve(session, snapshot, decision.lead)
                 lead = await self._save_lead(session, snapshot, decision.lead, language)
                 if decision.lead.complete:
                     invoice = await ensure_invoice(session, lead)
@@ -488,6 +651,22 @@ class Pipeline:
             )
         return queued
 
+    async def _reserve(self, session: Any, snapshot: Snapshot, draft: LeadDraft) -> None:
+        """Re-check the slot under a lock, in the transaction that books it.
+
+        ``_decide`` looked at the calendar without a lock, so two customers asking
+        for the same hour at the same moment would both see it free. Here only one
+        transaction at a time gets past the lock; the second finds the slot taken.
+        """
+        assert draft.scheduled_at is not None
+        await session.execute(select(func.pg_advisory_xact_lock(BOOKING_LOCK)))
+        start = draft.scheduled_at.astimezone(self.ctx.business.tz)
+        end = start + draft.duration
+        busy = await self._busy(session, start, end, snapshot.pending_lead_id)
+        taken = sum(1 for b in busy if b.overlaps(start, end))
+        if taken >= self.ctx.business.schedule.parallel_bookings:
+            raise SlotTaken
+
     @staticmethod
     async def _save_lead(session: Any, snapshot: Snapshot, draft: LeadDraft, language: str) -> Lead:
         lead = None
@@ -504,6 +683,7 @@ class Pipeline:
         lead.service_code = draft.service_code
         lead.service_text = draft.service_text
         lead.scheduled_at = draft.scheduled_at
+        lead.needs_confirmation = draft.needs_confirmation
         lead.amount = draft.amount
         lead.language = language
         lead.status = (LeadStatus.NEW if draft.complete else LeadStatus.INCOMPLETE).value

@@ -109,9 +109,28 @@ complaint                      -> hand off (with an apology)
 confidence below the threshold -> hand off
 spam                           -> store, never answer
 question                       -> retrieve -> answer -> validate -> reply or hand off
-booking                        -> merge fields -> complete? confirm + invoice : ask for the rest
+booking                        -> merge fields -> check the slot -> confirm + invoice,
+                                  or ask / offer the nearest free times
 other                          -> short generic reply
 ```
+
+A booking passes three checks that the model is not trusted with:
+
+- **Service.** The model reports a catalogue code *and* whether the match is
+  unambiguous (`service_certain`). An uncertain match is dropped: the customer gets the
+  list of services and a suggestion to start with `fallback_service` (diagnostics), and
+  no price is quoted until a service is actually chosen.
+- **Date.** The model reports the date as written and whether a year was stated. Code
+  (`scheduling.py`) refuses past dates; a date without a year is moved to its next
+  occurrence, and if that lands in a later year the customer must confirm it
+  (`leads.needs_confirmation`).
+- **Slot.** `schedule` in `business.yaml` holds opening hours, the slot grid and how many
+  visits may overlap. A visit must fit inside working hours with its full duration and
+  must not overlap existing bookings; otherwise the nearest free times are offered.
+  Because the decision is made outside a transaction, `_apply` re-checks the slot under
+  a PostgreSQL advisory lock in the same transaction that saves the booking: of two
+  simultaneous requests for one slot exactly one wins, the other is re-decided and
+  offered alternatives.
 
 *Why:* business rules in a prompt cannot be unit-tested, drift with every model update
 and fail silently. Rules in code are reviewed, tested and identical for every vendor.

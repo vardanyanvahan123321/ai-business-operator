@@ -220,7 +220,9 @@ async def evaluate(ctx: AppContext, dataset: list[dict[str, Any]]) -> Report:
                 problems.append(f"category: expected {item['category']}, got {message.category}")
 
         if "extraction" in item:
-            actual = analysis.get("extraction", {})
+            actual = dict(analysis.get("extraction", {}))
+            if not actual.get("service_certain", True):
+                actual["service_code"] = None  # the pipeline ignores an uncertain match
             for name in EXTRACTION_FIELDS:
                 ok = field_matches(name, item["extraction"][name], actual.get(name))
                 report.extraction.add(ok)

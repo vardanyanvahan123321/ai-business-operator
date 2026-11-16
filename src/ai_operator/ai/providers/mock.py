@@ -69,14 +69,25 @@ class MockProvider(AIProvider):
         now = request.now.replace(tzinfo=None)
 
         when = rules.parse_datetime(request.text, now)
+        collected = request.pending.parsed_datetime() if request.pending else None
+        clock = rules.find_time(request.text)
+        if collected and clock and not rules.has_date(request.text, now):
+            # "At 15:00" as a reply to "which time suits you?": keep the date we already have.
+            when = collected.replace(hour=clock[0], minute=clock[1])
+        service_code, service_certain = rules.match_service(text, keywords)
         extraction = Extraction(
             name=rules.find_name(request.text),
             phone=rules.find_phone(request.text),
-            service_code=rules.find_service(text, keywords),
+            service_code=service_code,
+            service_certain=service_certain,
             scheduled_at=when.strftime("%Y-%m-%dT%H:%M") if when else None,
+            year_stated=rules.year_stated(request.text) if when else None,
+            confirmed=rules.find_confirmation(request.text),
             amount=rules.find_amount(request.text),
         )
         has_booking_data = bool(extraction.phone or extraction.name or when)
+        if request.pending is not None and extraction.confirmed is not None:
+            has_booking_data = True  # a plain "yes" answers our "shall I book you for ...?"
         category, confidence = rules.classify(
             text,
             has_pending_booking=request.pending is not None,

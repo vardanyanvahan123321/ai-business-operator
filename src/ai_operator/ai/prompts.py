@@ -35,10 +35,23 @@ when the message is ambiguous, very short, or mixes several intents.
 
 EXTRACTION: fill a field only if the customer stated it (in this message or earlier in the
 conversation). Never guess or invent a value - use null.
-- service_code: one of the codes from the catalogue, or null if nothing matches.
+- service_code: a code from the catalogue ONLY if the customer clearly asks for exactly that
+  service. Do not pick the closest-sounding one. A vague or broader request ("fix my car",
+  "repair after an accident", "something is knocking", "check everything") or a service that
+  is not in the catalogue (body work, painting, towing...) is NOT a match: use null.
+- service_certain: true only when service_code is set and the match is unambiguous;
+  otherwise false.
+- service_text: what the customer asked for, in their own words.
 - scheduled_at: resolve relative dates ("tomorrow", "next Friday") against the current time
   given below; format YYYY-MM-DDTHH:MM in the {timezone} timezone. Null if no date was given;
-  if a date is given without a time, use 00:00.
+  if a date is given without a time, use 00:00. For a calendar date written without a year
+  ("20.10", "5 March") use the current year, even if that day has already passed - report
+  what was written, do not move it. If this message gives only a time and a date is already
+  among the collected booking details, combine them.
+- year_stated: true if the customer wrote the year, false if they wrote a calendar date
+  without a year, null for relative dates ("tomorrow", "on Friday") or when there is no date.
+- confirmed: true if this message agrees to a date the business proposed in its previous
+  message ("yes", "ok, book it"), false if it declines, null otherwise.
 - amount: only a sum of money the customer explicitly wrote.
 
 LANGUAGE: the language the customer writes in: "en", "ru" or "hy" (Armenian, including

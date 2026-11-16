@@ -28,6 +28,7 @@ Git identity is set locally (noreply address). Commit after each green stage.
 - `queue/ingest.py` - store in Postgres first (idempotent), then enqueue.
 - `queue/tasks.py` - arq jobs: retries with backoff, dead letters, sweeper.
 - `pipeline.py` - claim -> understand (AI) -> decide (code) -> apply (one transaction, outbox).
+- `scheduling.py` - pure booking-calendar rules (past dates, working hours, free slots).
 - `ai/` - providers (gemini/anthropic/openai/mock), RAG on pgvector, guard, rules for mock.
 - `actions/` - Google Sheets / CSV sink, PDF invoices (WeasyPrint), audit + owner notifications.
 - `pricing/` - polite scraper (robots.txt, delays) + change report with AI summary.
@@ -37,6 +38,10 @@ Git identity is set locally (noreply address). Commit after each green stage.
 ## Key decisions (keep them)
 - The AI only fills validated schemas; all business rules are plain Python in `pipeline.py`.
 - Price on an invoice always comes from the catalogue, never from the customer's text.
+- Booking rules live in `scheduling.py` + `Pipeline._book`: no past dates, a date without a
+  year is confirmed, slots are checked against `schedule` in `business.yaml` and existing
+  leads (advisory lock in `_apply`), an uncertain service match (`service_certain=false`)
+  is clarified, never priced. Regression tests: `tests/test_booking_rules.py`.
 - Prompt injection: pattern check -> handoff; untrusted text in delimiters; cited sources
   must be among retrieved chunks.
 - Embeddings are 768-dim for every provider; `mock`/`anthropic` use local hashing embeddings.
@@ -45,7 +50,7 @@ Git identity is set locally (noreply address). Commit after each green stage.
 
 ## Progress
 - [x] Stages 0-9: core pipeline, AI providers, channels, actions, pricing, reports, web panel,
-      evals (112 messages), 220 tests / 94% coverage, Docker demo stack, CI workflow,
+      evals (112 messages), 247 tests / 94% coverage, Docker demo stack, CI workflow,
       screenshots + tour GIF, docs (README x3, ARCHITECTURE, CASE_STUDY, EXPLAIN_RU), MIT.
 - [ ] Stage 10: published to GitHub; watch CI (the `docker` job is the only place where
       `docker compose` itself is exercised - it is not installed locally).

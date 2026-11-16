@@ -3,7 +3,7 @@
   "model": "gemini-3.5-flash-lite",
   "embedding_model": "gemini-embedding-001",
   "items": 112,
-  "seconds": 1346.5,
+  "seconds": 1314.4,
   "provider_errors": 0,
   "classification": {
     "passed": 106,
@@ -11,9 +11,9 @@
     "rate": 1.0
   },
   "extraction": {
-    "passed": 107,
+    "passed": 106,
     "total": 108,
-    "rate": 0.9907
+    "rate": 0.9815
   },
   "answer_accuracy": {
     "passed": 40,
@@ -72,6 +72,15 @@
     }
   },
   "failures": [
+    {
+      "id": "en-060",
+      "text": "I need to get my engine looked at and repaired, can you book me in for Thursday?",
+      "status": "answered",
+      "problems": [
+        "service_code: expected 'engine_repair', got None"
+      ],
+      "reply": "I cannot match your request to exactly one service from our price list, and I would rather not guess. We offer: Oil change, Computer diagnostics, Brake pads replacement, Tire fitting, Wheel alignment,"
+    },
     {
       "id": "ru-066",
       "text": "Можно приехать на шиномонтаж в субботу к 12:00? Мой номер 077 998877, Ани",

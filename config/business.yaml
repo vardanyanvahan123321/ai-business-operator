@@ -21,6 +21,19 @@ working_hours:
   ru: Пн-Сб 09:00-19:00, воскресенье - выходной
   hy: Երկ-Շբթ 09:00-19:00, կիրակի՝ փակ
 
+# What the booking rules check: a visit must start and finish inside these hours,
+# and at most `parallel_bookings` visits may overlap. Days not listed are days off.
+schedule:
+  slot_minutes: 30
+  parallel_bookings: 1
+  hours:
+    mon: ["09:00", "19:00"]
+    tue: ["09:00", "19:00"]
+    wed: ["09:00", "19:00"]
+    thu: ["09:00", "19:00"]
+    fri: ["09:00", "19:00"]
+    sat: ["09:00", "19:00"]
+
 seller:
   legal_name: Demo Auto Service LLC
   tax_id: "00000000"
@@ -69,6 +82,10 @@ services:
     price: 60000
     price_from: true
     duration_minutes: 480
+
+# When a request does not clearly match one service, the assistant does not guess:
+# it lists the services and suggests this one as a first step.
+fallback_service: diagnostics
 
 # Competitor price monitoring. In the demo these point at a local test site
 # shipped in ./demo/competitor_site (never at a real business).

@@ -73,6 +73,15 @@ predictable.
 - **It does not make things up.** Answers come only from the knowledge base and name
   their source. If the documents do not contain the answer, the customer is told so and
   a human takes over.
+- **A booking is a real slot, not a guess.** A date in the past is refused; a date
+  without a year ("20.10") means its next occurrence, and the customer confirms it
+  before anything is booked. Working hours and service duration come from the config,
+  a taken slot is never booked twice (also when two customers write at the same
+  second), and the nearest free times are offered instead. A request that does not
+  clearly match one service ("fix my car after an accident") gets a clarifying question
+  and a suggestion to start with diagnostics — never a guessed service or its price.
+  All three rules were added after I tested the live Telegram bot and it failed them;
+  each has regression tests in [`tests/test_booking_rules.py`](tests/test_booking_rules.py).
 - **Human in the loop.** Complaints, low confidence, unanswerable questions and
   suspicious messages go to a person, with a notification to the owner. The confidence
   threshold is adjustable in the panel.
@@ -95,7 +104,8 @@ that converts to a single message format; adding WhatsApp means writing one more
 **AI brain** — classification (question / booking / complaint / spam / other),
 retrieval-augmented answers on PostgreSQL + pgvector, extraction of booking data into a
 strict Pydantic schema, confidence scoring, multi-message bookings ("please send your
-phone" → the next message completes the same booking).
+phone" → the next message completes the same booking), slot checks against working
+hours and existing bookings.
 
 **Actions** — bookings to Google Sheets (CSV fallback), PDF invoices in the customer's
 language, owner notifications in Telegram.
@@ -175,7 +185,7 @@ Design decisions and their reasons are written up in
 
 | Check | Result |
 |---|---|
-| Automated tests | **220**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
+| Automated tests | **247**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
 | Coverage | **94%** (CI fails below 85%) |
 | Static analysis | `ruff` and `mypy --strict`, zero errors |
 | CI | lint → tests + evals → Docker build and a smoke test of the one-command demo |
@@ -188,7 +198,7 @@ run through the real pipeline by [`evals/run.py`](evals/run.py):
 | Provider | Classification | Extraction (fields) | Answer accuracy | No made-up answers | Injection defence |
 |---|---|---|---|---|---|
 | `mock` (rules-v1) | 97% (103/106) | 100% (108/108) | 60% (24/40) | 92% (48/52) | 100% (6/6) |
-| `gemini` (gemini-3.5-flash-lite, free tier, 2026-11-16) | 100% (106/106) | 99% (107/108) | 100% (40/40) | 100% (52/52) | 100% (6/6) |
+| `gemini` (gemini-3.5-flash-lite, free tier, 2026-11-16) | 100% (106/106) | 98% (106/108) | 100% (40/40) | 100% (52/52) | 100% (6/6) |
 
 How to read this honestly:
 
@@ -202,8 +212,12 @@ How to read this honestly:
 - The `gemini` row is **one full run** of all 112 messages on 16 Nov 2026 with a free
   Google AI Studio key: model `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001`,
   temperature 0, no provider errors. Raw output: [`evals/results/gemini.json`](evals/results/gemini.json).
-  Its one miss is a message signed "…, Ани", where the model took the signature as the
-  customer's name and my test set expected no name — a debatable label that I left as it was.
+  It has two misses. A message signed "…, Ани": the model took the signature as the
+  customer's name and my test set expected no name — a debatable label that I left as it
+  was. And "I need to get my engine looked at and repaired": the model was not sure this
+  means the "Engine repair" service, so the system asked the customer instead of booking.
+  That second miss is the price of the "do not guess the service" rule above, and I
+  prefer it to a wrong booking with a wrong price.
 - A near-perfect score says the test set is **easy for a modern LLM**, not that the system
   is never wrong: I wrote both the prompts and the 112 messages, and it is a single run.
   Real customer traffic will be messier; that is what the confidence threshold and the
@@ -257,6 +271,10 @@ docs/                  architecture, case study, screenshots
 3. **Copy `.env.example` to `.env`** and set what you need:
    - `AI_PROVIDER` and its key (a free [Google AI Studio](https://aistudio.google.com/apikey) key works);
    - `TELEGRAM_BOT_TOKEN` from @BotFather and `TELEGRAM_OWNER_CHAT_ID`;
+     the owner's chat receives hand-off alerts, new-booking notices and the morning
+     report. When you try the bot yourself, you are both the customer and the owner,
+     so those owner messages arrive in the same chat as the customer replies — in real
+     use they go to the owner's own account;
    - IMAP/SMTP credentials for email;
    - `GOOGLE_SHEETS_ID` and a service-account key for Sheets;
    - `ADMIN_PASSWORD`, `SESSION_SECRET`, and `DEMO_MODE=false`.
@@ -289,7 +307,8 @@ Stated plainly, so nobody finds them the hard way:
 ## Roadmap
 
 - WhatsApp Business and Instagram channels
-- Calendar integration with free-slot checks before confirming a booking
+- Sync with an external calendar (Google Calendar); slot checks today use the system's
+  own bookings
 - Voice messages (speech-to-text) in Telegram
 - User roles in the panel and an audit log of operator actions
 - Published eval results for several LLMs, and an LLM-judged answer-quality metric

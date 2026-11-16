@@ -27,12 +27,33 @@ class Extraction(BaseModel):
     service_code: str | None = Field(
         default=None, description="Code of the requested service from the catalogue, or null"
     )
+    service_certain: bool = Field(
+        default=False,
+        description=(
+            "True only if the request unambiguously names the catalogue service in "
+            "service_code. False for vague, broader or merely similar requests."
+        ),
+    )
     service_text: str | None = Field(
         default=None, description="The service in the customer's own words"
     )
     scheduled_at: str | None = Field(
         default=None,
         description="Requested local date and time as ISO 8601 (YYYY-MM-DDTHH:MM), or null",
+    )
+    year_stated: bool | None = Field(
+        default=None,
+        description=(
+            "true if the customer wrote the year; false if they wrote a calendar date "
+            "(day and month) without a year; null for relative dates or no date"
+        ),
+    )
+    confirmed: bool | None = Field(
+        default=None,
+        description=(
+            "true if this message agrees to the date the business proposed in its last "
+            "message; false if it declines; null otherwise"
+        ),
     )
     # float (not Decimal) keeps the JSON schema simple for every LLM vendor.
     amount: float | None = Field(
@@ -52,7 +73,18 @@ class Extraction(BaseModel):
             return self
         data = older.model_dump()
         data.update({k: v for k, v in self.model_dump().items() if v is not None})
+        # Flags describe one message, not the conversation: they are never inherited.
+        data.update(year_stated=self.year_stated, confirmed=self.confirmed)
+        data["service_certain"] = (
+            self.service_certain if self.service_code is not None else older.service_certain
+        )
         return Extraction.model_validate(data)
+
+    def trusted(self) -> Extraction:
+        """Drop a service the model was not sure about: an uncertain match is no match."""
+        if self.service_code is None or self.service_certain:
+            return self
+        return self.model_copy(update={"service_code": None})
 
     def parsed_datetime(self) -> datetime | None:
         if not self.scheduled_at:
