@@ -93,6 +93,32 @@ async def test_public_form_rejects_empty_and_honeypot(
         assert (await session.scalars(select(Message))).all() == []
 
 
+async def test_public_form_limits_messages_per_address(ctx: AppContext) -> None:
+    limited = ctx.settings.model_copy(update={"webform_max_messages": 2})
+    ctx.settings = limited
+    transport = httpx.ASGITransport(app=create_app(ctx))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+        for _ in range(2):
+            accepted = await http.post("/request", data={"text": "How much is an oil change?"})
+            assert accepted.status_code == 303
+        flood = await http.post("/request", data={"text": "How much is an oil change?"})
+        assert flood.status_code == 429
+        # Rejected input does not use up the allowance, and nothing extra was stored.
+        async with ctx.sessions() as session:
+            assert len((await session.scalars(select(Message))).all()) == 2
+
+
+async def test_session_cookie_is_secure_only_behind_https(ctx: AppContext) -> None:
+    async def session_cookie(base_url: str) -> str:
+        ctx.settings = ctx.settings.model_copy(update={"public_base_url": base_url})
+        transport = httpx.ASGITransport(app=create_app(ctx))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            return (await http.get("/panel/login")).headers["set-cookie"].lower()
+
+    assert "secure" in await session_cookie("https://operator.example.com")
+    assert "secure" not in await session_cookie("http://localhost:8088")
+
+
 async def test_unknown_conversation_is_404(client: httpx.AsyncClient) -> None:
     assert (await client.get("/request/" + "a" * 24)).status_code == 404
     assert (await client.get("/request/short")).status_code == 404

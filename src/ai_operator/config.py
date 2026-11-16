@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # --- web panel ---------------------------------------------------------
     admin_password: str = ""
     session_secret: str = ""
+    # Public form: messages accepted from one client address per window (0 = no limit).
+    webform_max_messages: int = 10
+    webform_window_seconds: int = 300
 
     @field_validator("database_url")
     @classmethod

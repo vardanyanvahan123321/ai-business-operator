@@ -14,11 +14,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
 
 from ai_operator import __version__
+from ai_operator.config import get_settings
 from ai_operator.context import AppContext
 from ai_operator.core.logging import get_logger
 from ai_operator.runtime import build_context
 from ai_operator.web import panel, public
-from ai_operator.web.deps import WEB_DIR, LoginRequired, LoginThrottle
+from ai_operator.web.deps import WEB_DIR, LoginRequired, Throttle
 
 log = get_logger(__name__)
 
@@ -40,14 +41,20 @@ def create_app(ctx: AppContext | None = None) -> FastAPI:
     )
     if ctx is not None:
         app.state.ctx = ctx
-    app.state.login_throttle = LoginThrottle()
+    settings = ctx.settings if ctx is not None else get_settings()
+    app.state.login_throttle = Throttle()
+    app.state.form_throttle = Throttle(
+        max_events=settings.webform_max_messages, window_seconds=settings.webform_window_seconds
+    )
 
-    secret = (ctx.settings.session_secret if ctx else "") or _session_secret()
     app.add_middleware(
         SessionMiddleware,
-        secret_key=secret,
+        # Without a configured secret, sessions simply do not survive a restart.
+        secret_key=settings.session_secret or secrets.token_urlsafe(32),
         session_cookie="abo_session",
         same_site="lax",
+        # Behind HTTPS the session cookie is never sent over plain HTTP.
+        https_only=settings.public_base_url.lower().startswith("https://"),
         max_age=12 * 3600,
     )
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
@@ -99,13 +106,6 @@ def create_app(ctx: AppContext | None = None) -> FastAPI:
         )
 
     return app
-
-
-def _session_secret() -> str:
-    from ai_operator.config import get_settings
-
-    # Without a configured secret, sessions simply do not survive a restart.
-    return get_settings().session_secret or secrets.token_urlsafe(32)
 
 
 def app_factory() -> FastAPI:  # pragma: no cover - uvicorn entry point

@@ -43,6 +43,7 @@
   "webform.reply": "Ответ",
   "webform.another": "Отправить ещё одно сообщение",
   "webform.invalid": "Введите сообщение (не короче 2 символов).",
+  "webform.throttled": "Слишком много сообщений за короткое время. Попробуйте через несколько минут.",
   "webform.you": "Вы",
   "webform.download_invoice": "Скачать счёт (PDF)",
   "notify.handoff": "Нужен человек ({reason}): сообщение #{id}, канал {channel}.\n{summary}\n{url}",

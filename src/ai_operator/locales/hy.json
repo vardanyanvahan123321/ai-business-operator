@@ -43,6 +43,7 @@
   "webform.reply": "Պատասխան",
   "webform.another": "Ուղարկել ևս մեկ հաղորդագրություն",
   "webform.invalid": "Մուտքագրեք հաղորդագրություն (առնվազն 2 նիշ)։",
+  "webform.throttled": "Կարճ ժամանակում չափազանց շատ հաղորդագրություններ են ուղարկվել։ Փորձեք մի քանի րոպեից։",
   "webform.you": "Դուք",
   "webform.download_invoice": "Ներբեռնել հաշիվը (PDF)",
   "notify.handoff": "Պետք է մարդ ({reason})՝ հաղորդագրություն #{id}, ալիք՝ {channel}։\n{summary}\n{url}",

@@ -17,7 +17,7 @@ from ai_operator.channels.webform import WebFormChannel, form_to_inbound, new_co
 from ai_operator.core.i18n import t
 from ai_operator.db.models import Invoice, Lead, Message, Outbound
 from ai_operator.queue.ingest import ingest
-from ai_operator.web.deps import current_lang, get_ctx, render
+from ai_operator.web.deps import client_address, current_lang, get_ctx, render
 
 router = APIRouter()
 MAX_FORM_TEXT = 4000
@@ -55,6 +55,17 @@ async def submit_request(
             {"token": token or None, "error": t(lang, "webform.invalid")},
             status_code=422,
         )
+    throttle = request.app.state.form_throttle
+    client = client_address(request)
+    if throttle.blocked(client):
+        # Every accepted message costs AI calls; one address may not flood the queue.
+        return render(
+            request,
+            "public/form.html",
+            {"token": token or None, "error": t(lang, "webform.throttled")},
+            status_code=429,
+        )
+    throttle.record(client)
     conversation = token if _valid_token(token) else new_conversation_token()
     await ingest(
         ctx,

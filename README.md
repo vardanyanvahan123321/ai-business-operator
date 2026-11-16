@@ -94,6 +94,8 @@ predictable.
   inside delimiters, and output that is never trusted (citations must point at chunks
   the system itself retrieved).
 - **Personal data is masked** in logs and in the audit trail.
+- **The public form cannot be used to burn the AI quota**: a honeypot field stops simple
+  bots and one address may send only a limited number of messages per five minutes.
 - **The price on an invoice comes from the catalogue**, never from the customer's text.
 
 ## Features
@@ -185,7 +187,7 @@ Design decisions and their reasons are written up in
 
 | Check | Result |
 |---|---|
-| Automated tests | **247**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
+| Automated tests | **249**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
 | Coverage | **94%** (CI fails below 85%) |
 | Static analysis | `ruff` and `mypy --strict`, zero errors |
 | CI | lint → tests + evals → Docker build and a smoke test of the one-command demo |
@@ -299,6 +301,9 @@ Stated plainly, so nobody finds them the hard way:
 - The `mock` provider is for demos and tests, not for production conversations.
 - With Anthropic (no embeddings API) retrieval falls back to local lexical embeddings.
 - The panel has a single administrator password; there are no user roles.
+- The sign-in and public-form rate limits are counted in memory, per web process and per
+  client address. Behind a reverse proxy the proxy must pass the real client address,
+  and several web replicas would need a shared counter (Redis).
 - The Google Sheets sink and the real LLM providers are covered by tests with faked
   clients; they have not been exercised against live accounts in CI.
 - The Armenian texts were written with AI assistance and deserve a native proofread

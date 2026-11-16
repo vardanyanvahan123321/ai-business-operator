@@ -103,25 +103,38 @@ def render(
     return response
 
 
-class LoginThrottle:
-    """Slows down password guessing: N failures per window per client address."""
+class Throttle:
+    """At most N recorded events per time window per client address.
 
-    def __init__(self, max_failures: int = 5, window_seconds: int = 300) -> None:
-        self._max = max_failures
+    Used for failed sign-ins (slows down password guessing) and for the public
+    form (one address cannot flood the queue and burn the AI quota). State is in
+    memory: it is per process and resets on restart, which is enough for a
+    single web container.
+    """
+
+    def __init__(self, max_events: int = 5, window_seconds: int = 300) -> None:
+        self._max = max_events
         self._window = window_seconds
-        self._failures: dict[str, list[float]] = defaultdict(list)
+        self._events: dict[str, list[float]] = defaultdict(list)
 
     def _recent(self, client: str) -> list[float]:
         cutoff = time.monotonic() - self._window
-        recent = [stamp for stamp in self._failures[client] if stamp > cutoff]
-        self._failures[client] = recent
+        recent = [stamp for stamp in self._events[client] if stamp > cutoff]
+        if recent:
+            self._events[client] = recent
+        else:
+            self._events.pop(client, None)  # do not keep an entry per visitor forever
         return recent
 
     def blocked(self, client: str) -> bool:
-        return len(self._recent(client)) >= self._max
+        return self._max > 0 and len(self._recent(client)) >= self._max
 
-    def fail(self, client: str) -> None:
-        self._failures[client].append(time.monotonic())
+    def record(self, client: str) -> None:
+        self._events[client].append(time.monotonic())
 
     def reset(self, client: str) -> None:
-        self._failures.pop(client, None)
+        self._events.pop(client, None)
+
+
+def client_address(request: Request) -> str:
+    return request.client.host if request.client else "unknown"

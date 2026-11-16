@@ -43,6 +43,7 @@
   "webform.reply": "Reply",
   "webform.another": "Send another message",
   "webform.invalid": "Please enter a message (at least 2 characters).",
+  "webform.throttled": "Too many messages in a short time. Please try again in a few minutes.",
   "webform.you": "You",
   "webform.download_invoice": "Download invoice (PDF)",
   "notify.handoff": "Needs a human ({reason}): message #{id} via {channel}.\n{summary}\n{url}",

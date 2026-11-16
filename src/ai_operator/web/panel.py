@@ -40,6 +40,7 @@ from ai_operator.queue import jobs
 from ai_operator.web import charts, queries
 from ai_operator.web.deps import (
     LANG_COOKIE,
+    client_address,
     current_lang,
     get_ctx,
     render,
@@ -77,7 +78,7 @@ async def login(request: Request, password: Annotated[str, Form()] = "") -> Resp
     ctx = get_ctx(request)
     lang = current_lang(request, ctx.business.default_language)
     throttle = request.app.state.login_throttle
-    client = request.client.host if request.client else "unknown"
+    client = client_address(request)
     if throttle.blocked(client):
         return render(request, "login.html", {"error": t(lang, "ui.login.throttled")}, 429)
     expected = ctx.settings.admin_password
@@ -85,7 +86,7 @@ async def login(request: Request, password: Annotated[str, Form()] = "") -> Resp
         # Secure by default: no password configured means nobody can log in.
         return render(request, "login.html", {"error": t(lang, "ui.login.disabled")}, 503)
     if not secrets.compare_digest(password.encode(), expected.encode()):
-        throttle.fail(client)
+        throttle.record(client)
         return render(request, "login.html", {"error": t(lang, "ui.login.wrong")}, 401)
     throttle.reset(client)
     request.session.clear()  # new session id material after login
