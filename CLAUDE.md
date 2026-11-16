@@ -5,7 +5,6 @@ Conveyor: Channel -> Queue -> AI brain -> Actions -> Database -> Reports.
 Talk to the user in Russian, briefly, one step at a time. Quality over speed.
 
 ## Hard constraints of the user's PC
-- Do NOT touch `~/deep-research`, LM Studio, its processes or supervisor.
 - No `sudo`, no system upgrade. Save RAM; stop Docker containers after checks.
 - GitHub CLI: `~/.local/bin/gh` (logged in as `vardanyanvahan123321`).
 - Secrets only in `.env` (git-ignored). Only `.env.example` is committed.
