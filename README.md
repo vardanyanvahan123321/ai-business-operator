@@ -175,7 +175,7 @@ Design decisions and their reasons are written up in
 
 | Check | Result |
 |---|---|
-| Automated tests | **219**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
+| Automated tests | **220**, including end-to-end pipeline scenarios against real PostgreSQL and a real Redis worker |
 | Coverage | **94%** (CI fails below 85%) |
 | Static analysis | `ruff` and `mypy --strict`, zero errors |
 | CI | lint → tests + evals → Docker build and a smoke test of the one-command demo |
@@ -188,6 +188,7 @@ run through the real pipeline by [`evals/run.py`](evals/run.py):
 | Provider | Classification | Extraction (fields) | Answer accuracy | No made-up answers | Injection defence |
 |---|---|---|---|---|---|
 | `mock` (rules-v1) | 97% (103/106) | 100% (108/108) | 60% (24/40) | 92% (48/52) | 100% (6/6) |
+| `gemini` (gemini-3.5-flash-lite, free tier, 2026-11-16) | 100% (106/106) | 99% (107/108) | 100% (40/40) | 100% (52/52) | 100% (6/6) |
 
 How to read this honestly:
 
@@ -198,8 +199,20 @@ How to read this honestly:
 - When the baseline cannot answer, it mostly **hands off instead of guessing**: that is
   the 92% in "no made-up answers". The 4 failures are questions where lexical search
   matched the wrong paragraph.
-- Rows for real LLMs are produced with `make evals PROVIDER=gemini` (needs an API key).
-  I have not published numbers I did not measure.
+- The `gemini` row is **one full run** of all 112 messages on 16 Nov 2026 with a free
+  Google AI Studio key: model `gemini-3.5-flash-lite`, embeddings `gemini-embedding-001`,
+  temperature 0, no provider errors. Raw output: [`evals/results/gemini.json`](evals/results/gemini.json).
+  Its one miss is a message signed "…, Ани", where the model took the signature as the
+  customer's name and my test set expected no name — a debatable label that I left as it was.
+- A near-perfect score says the test set is **easy for a modern LLM**, not that the system
+  is never wrong: I wrote both the prompts and the 112 messages, and it is a single run.
+  Real customer traffic will be messier; that is what the confidence threshold and the
+  human hand-off are for.
+- Reproduce with `make evals PROVIDER=gemini` (about 25 minutes with the built-in pacing).
+  Free-tier quotas differ a lot between models: on the day of the run `gemini-3.6-flash`
+  allowed only 20 requests per day, which is why the lighter model is the default. If the
+  provider stops answering mid-run, the runner aborts instead of reporting quota errors
+  as model mistakes.
 
 "No made-up answers" counts, over all questions, the cases where the system did *not*
 send an unsupported answer: a correct sourced answer and an honest hand-off both pass.

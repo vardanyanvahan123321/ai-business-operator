@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # --- AI ----------------------------------------------------------------
     ai_provider: AIProviderName = "gemini"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-flash-latest"
+    gemini_model: str = "gemini-3.5-flash-lite"
     gemini_embedding_model: str = "gemini-embedding-001"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-5-5"

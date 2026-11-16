@@ -9,8 +9,7 @@ Talk to the user in Russian, briefly, one step at a time. Quality over speed.
 - No `sudo`, no system upgrade. Save RAM; stop Docker containers after checks.
 - GitHub CLI: `~/.local/bin/gh` (logged in as `vardanyanvahan123321`).
 - Secrets only in `.env` (git-ignored). Only `.env.example` is committed.
-- `docker compose` plugin is NOT installed and installing it was denied by the
-  permission system. Ask the user before trying again (needed to verify `make demo`).
+- `docker compose` plugin is installed in `~/.docker/cli-plugins`; the user ran `make demo` themself.
 
 ## How to run things
 ```bash
@@ -46,14 +45,17 @@ Git identity is set locally (noreply address). Commit after each green stage.
 
 ## Progress
 - [x] Stages 0-9: core pipeline, AI providers, channels, actions, pricing, reports, web panel,
-      evals (112 messages), 219 tests / 94% coverage, Docker demo stack, CI workflow,
+      evals (112 messages), 220 tests / 94% coverage, Docker demo stack, CI workflow,
       screenshots + tour GIF, docs (README x3, ARCHITECTURE, CASE_STUDY, EXPLAIN_RU), MIT.
 - [ ] Stage 10: published to GitHub; watch CI (the `docker` job is the only place where
       `docker compose` itself is exercised - it is not installed locally).
 
 ## Useful facts
-- Evals: `make evals` (mock). Real LLM rows for the README table still need a key:
-  `GEMINI_API_KEY=... make evals PROVIDER=gemini`, then paste the `--markdown` row.
+- Evals: `make evals` (mock). Real LLM row: `make evals PROVIDER=gemini` (key in `.env`),
+  ~25 min for 112 messages (~4 generate calls each). Measured 2026-11-16 on the free tier:
+  `gemini-3.5-flash-lite` (default) completed the full run; `gemini-3.6-flash` allows only
+  20 requests/day; `gemini-3.8-flash` returned 504; `gemini-flash-latest` no longer exists.
+- Do not run `pytest` while an eval is running: both use the test database.
 - Demo without compose (how it was verified locally): build the image, create a docker
   network, run postgres/redis/mailpit/competitor, then the image with an --env-file as
   migrate / web / worker / scheduler. Note: in zsh use `${=VAR}` to word-split.
@@ -63,6 +65,4 @@ Git identity is set locally (noreply address). Commit after each green stage.
   (timestamps are simulated); do not quote it as a measurement.
 
 ## Open questions for the user
-- docker compose plugin is not installed locally (install was denied by the permission system).
-- Gemini API key for the real-LLM row of the evals table.
 - Armenian texts should be proofread by a native speaker.

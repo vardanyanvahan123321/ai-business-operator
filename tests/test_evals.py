@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
+from ai_operator.ai.resilience import ProviderTransientError
 from ai_operator.context import AppContext
 from evals.run import (
+    EvalAborted,
     Report,
     Score,
     contains_facts,
@@ -82,3 +86,17 @@ async def test_offline_baseline_does_not_regress(ctx: AppContext, kb: int) -> No
         ),
         Report,
     )
+
+
+async def test_eval_stops_when_the_provider_stops_answering(
+    ctx: AppContext, kb: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exhausted quota must abort the run, not be scored as model mistakes."""
+
+    async def out_of_quota(*args: object, **kwargs: object) -> None:
+        raise ProviderTransientError("gemini 429: quota exceeded")
+
+    monkeypatch.setattr(ctx.provider, "analyze", out_of_quota)
+    plain = [item for item in load_dataset() if not item.get("injection")]
+    with pytest.raises(EvalAborted, match="3 items in a row"):
+        await evaluate(ctx, plain[:10])

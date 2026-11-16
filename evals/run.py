@@ -39,6 +39,7 @@ from sqlalchemy import select, text
 
 from ai_operator.actions.sheets import CsvSink
 from ai_operator.ai.providers import build_provider
+from ai_operator.ai.resilience import ProviderError
 from ai_operator.ai.schemas import normalize_phone
 from ai_operator.channels.base import ChannelRegistry
 from ai_operator.channels.webform import WebFormChannel
@@ -59,6 +60,9 @@ RESULTS_DIR = ROOT / "results"
 # All relative dates in the dataset ("tomorrow", "on Friday") refer to this moment.
 REFERENCE_TIME = "2026-11-16T09:00:00+04:00"
 EXTRACTION_FIELDS = ("service_code", "phone", "name", "scheduled_at")
+# A free-tier daily quota can run out mid-run. Scoring the remaining items as model
+# mistakes would be a lie, so after this many provider failures in a row the run stops.
+MAX_CONSECUTIVE_PROVIDER_ERRORS = 3
 EVAL_TABLES = (
     "events, dead_letters, notifications, outbound_messages, handoffs, invoices, leads, messages"
 )
@@ -78,6 +82,10 @@ class Score:
         return self.passed / self.total if self.total else 0.0
 
 
+class EvalAborted(RuntimeError):
+    """The provider stopped answering (quota, outage): the run measures nothing."""
+
+
 @dataclass
 class Report:
     provider: str
@@ -85,6 +93,7 @@ class Report:
     embedding_model: str
     items: int
     seconds: float
+    provider_errors: int = 0  # items the provider failed to process (quota, outage)
     classification: Score = field(default_factory=Score)
     extraction: Score = field(default_factory=Score)
     answer_accuracy: Score = field(default_factory=Score)
@@ -150,6 +159,7 @@ async def evaluate(ctx: AppContext, dataset: list[dict[str, Any]]) -> Report:
     )
     by_language: dict[str, Score] = defaultdict(Score)
     by_category: dict[str, Score] = defaultdict(Score)
+    consecutive_provider_errors = 0
 
     for item in dataset:
         inbound = InboundMessage(
@@ -163,6 +173,16 @@ async def evaluate(ctx: AppContext, dataset: list[dict[str, Any]]) -> Report:
         error: str | None = None
         try:
             await pipeline.process(message_id)
+            consecutive_provider_errors = 0
+        except ProviderError as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            report.provider_errors += 1
+            consecutive_provider_errors += 1
+            if consecutive_provider_errors >= MAX_CONSECUTIVE_PROVIDER_ERRORS:
+                raise EvalAborted(
+                    f"the provider failed {consecutive_provider_errors} items in a row "
+                    f"(at {item['id']}); last error: {error[:600]}"
+                ) from exc
         except Exception as exc:  # a crash is a failed item, not a failed run
             error = f"{type(exc).__name__}: {exc}"
 
@@ -266,7 +286,8 @@ MARKDOWN_HEADER = (
 def summary(report: Report) -> str:
     lines = [
         f"Provider: {report.provider} ({report.model}), embeddings: {report.embedding_model}",
-        f"Items: {report.items}, time: {report.seconds}s",
+        f"Items: {report.items}, time: {report.seconds}s, "
+        f"provider errors: {report.provider_errors}",
         "",
         f"  classification       {report.classification.rate:6.1%}  "
         f"({report.classification.passed}/{report.classification.total})",
@@ -336,7 +357,11 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI entry 
     parser.add_argument("--min-no-made-up", type=float, default=0.0)
     args = parser.parse_args(argv)
 
-    report = asyncio.run(run(args.provider, args.limit))
+    try:
+        report = asyncio.run(run(args.provider, args.limit))
+    except EvalAborted as exc:
+        print(f"Eval aborted, nothing saved: {exc}", file=sys.stderr)
+        return 2
     RESULTS_DIR.mkdir(exist_ok=True)
     out = RESULTS_DIR / f"{report.provider}.json"
     out.write_text(json.dumps(report.to_json(), ensure_ascii=False, indent=2) + "\n", "utf-8")
